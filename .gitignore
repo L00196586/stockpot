@@ -36,3 +36,5 @@ media/
 
 # macOS
 .DS_Store
+
+/local_files/*
