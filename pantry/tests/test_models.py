@@ -1,0 +1,103 @@
+import datetime
+
+from django.contrib.auth.models import User
+from django.db import IntegrityError
+from django.test import TestCase
+
+from pantry.models import Ingredient, StockItem
+
+
+class IngredientModelTest(TestCase):
+    def test_str_representation(self):
+        ingredient = Ingredient(name="Flour", unit="g")
+        self.assertEqual(str(ingredient), "Flour (g)")
+
+    def test_default_unit_is_grams(self):
+        ingredient = Ingredient.objects.create(name="Salt")
+        self.assertEqual(ingredient.unit, Ingredient.Unit.GRAMS)
+
+    def test_name_is_unique(self):
+        Ingredient.objects.create(name="Flour", unit="g")
+        with self.assertRaises(IntegrityError):
+            Ingredient.objects.create(name="Flour", unit="kg")
+
+    def test_all_unit_choices_are_valid(self):
+        valid_units = ["g", "kg", "ml", "L", "pcs", "tbsp", "tsp", "cup"]
+        for unit in valid_units:
+            ing = Ingredient.objects.create(name=f"Ingredient {unit}", unit=unit)
+            self.assertEqual(ing.unit, unit)
+
+    def test_ordering_is_alphabetical_by_name(self):
+        Ingredient.objects.create(name="Zucchini", unit="pcs")
+        Ingredient.objects.create(name="Apple", unit="pcs")
+        Ingredient.objects.create(name="Milk", unit="L")
+        names = list(Ingredient.objects.values_list("name", flat=True))
+        self.assertEqual(names, ["Apple", "Milk", "Zucchini"])
+
+
+class StockItemModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", password="pass")
+        self.ingredient = Ingredient.objects.create(name="Flour", unit="g")
+
+    def test_str_representation(self):
+        stock = StockItem.objects.create(
+            user=self.user, ingredient=self.ingredient, quantity=500
+        )
+        self.assertEqual(str(stock), "testuser – Flour: 500g")
+
+    def test_expiry_date_is_optional(self):
+        stock = StockItem.objects.create(
+            user=self.user, ingredient=self.ingredient, quantity=100
+        )
+        self.assertIsNone(stock.expiry_date)
+
+    def test_expiry_date_can_be_set(self):
+        expiry = datetime.date(2026, 12, 31)
+        stock = StockItem.objects.create(
+            user=self.user, ingredient=self.ingredient, quantity=100, expiry_date=expiry
+        )
+        self.assertEqual(stock.expiry_date, expiry)
+
+    def test_timestamps_are_set_on_create(self):
+        stock = StockItem.objects.create(
+            user=self.user, ingredient=self.ingredient, quantity=100
+        )
+        self.assertIsNotNone(stock.created_at)
+        self.assertIsNotNone(stock.updated_at)
+
+    def test_unique_together_prevents_duplicate_user_ingredient(self):
+        StockItem.objects.create(user=self.user, ingredient=self.ingredient, quantity=100)
+        with self.assertRaises(IntegrityError):
+            StockItem.objects.create(
+                user=self.user, ingredient=self.ingredient, quantity=200
+            )
+
+    def test_different_users_can_stock_the_same_ingredient(self):
+        user2 = User.objects.create_user(username="user2", password="pass")
+        StockItem.objects.create(user=self.user, ingredient=self.ingredient, quantity=100)
+        stock2 = StockItem.objects.create(
+            user=user2, ingredient=self.ingredient, quantity=200
+        )
+        self.assertEqual(stock2.quantity, 200)
+
+    def test_deleting_user_cascades_to_stock_items(self):
+        StockItem.objects.create(user=self.user, ingredient=self.ingredient, quantity=100)
+        self.user.delete()
+        self.assertEqual(StockItem.objects.count(), 0)
+
+    def test_deleting_ingredient_cascades_to_stock_items(self):
+        StockItem.objects.create(user=self.user, ingredient=self.ingredient, quantity=100)
+        self.ingredient.delete()
+        self.assertEqual(StockItem.objects.count(), 0)
+
+    def test_ordering_is_alphabetical_by_ingredient_name(self):
+        apple = Ingredient.objects.create(name="Apple", unit="pcs")
+        StockItem.objects.create(user=self.user, ingredient=self.ingredient, quantity=100)
+        StockItem.objects.create(user=self.user, ingredient=apple, quantity=5)
+        names = list(
+            StockItem.objects.filter(user=self.user).values_list(
+                "ingredient__name", flat=True
+            )
+        )
+        self.assertEqual(names, ["Apple", "Flour"])
