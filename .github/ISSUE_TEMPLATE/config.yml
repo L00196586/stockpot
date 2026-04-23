@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Project documentation
+    url: https://github.com/gonzalocelina/stockpot/blob/main/README.md
+    about: Read the README before opening an issue — your question may already be answered there.
