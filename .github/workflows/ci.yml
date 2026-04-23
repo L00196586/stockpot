@@ -161,6 +161,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Convert repository name to lowercase
+        run: echo "REPO_LC=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         # Skip login for PRs from forks (no access to secrets)
@@ -175,7 +178,7 @@ jobs:
         with:
           context: .
           push: ${{ !github.event.pull_request.head.repo.fork }}
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ghcr.io/${{ env.REPO_LC }}:${{ github.sha }}
           # Layer caching via GitHub Actions cache
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -184,5 +187,5 @@ jobs:
         uses: anchore/sbom-action@v0
         if: ${{ !github.event.pull_request.head.repo.fork }}
         with:
-          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          image: ghcr.io/${{ env.REPO_LC }}:${{ github.sha }}
           artifact-name: sbom-${{ github.sha }}.spdx.json
