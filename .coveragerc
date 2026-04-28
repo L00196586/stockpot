@@ -1,0 +1,7 @@
+[run]
+omit =
+    */migrations/*
+    manage.py
+    */local_files/*
+    stockpot/wsgi.py
+    stockpot/asgi.py
