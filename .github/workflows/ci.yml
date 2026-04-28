@@ -50,7 +50,7 @@ jobs:
             echo "has_js=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.detect-js.outputs.has_js == 'true'
         with:
           node-version: "20"
