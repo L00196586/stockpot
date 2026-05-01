@@ -48,7 +48,13 @@ class LoginViewTests(TestCase):
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    # TODO: Authenticated session should allow access to a protected endpoint
+    def test_session_is_established_after_login(self):
+        response = self.client.post(self.url, self.valid_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Authenticated session should allow access to a protected endpoint
+        stock_url = reverse("stock-list-create")
+        response2 = self.client.get(stock_url)
+        self.assertNotEqual(response2.status_code, status.HTTP_403_FORBIDDEN)
 
     # Wrong credentials
 
@@ -108,3 +114,60 @@ class LoginViewTests(TestCase):
         response = self.client.post(self.url, {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+
+class LogoutViewTests(TestCase):
+    """Tests for POST /api/auth/logout/"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.login_url = reverse("auth-login")
+        self.logout_url = reverse("auth-logout")
+        self.user = User.objects.create_user(
+            username="logout@example.com",
+            email="logout@example.com",
+            password="SecurePass123!",
+        )
+        self.login_payload = {
+            "email": "logout@example.com",
+            "password": "SecurePass123!",
+        }
+
+    # TODO: If there's time, this implementation (reusable function with POST request) could be implemented in other tests as well to reduce code duplication.
+    def _login(self):
+        return self.client.post(self.login_url, self.login_payload, format="json")
+
+    # Success case
+
+    def test_logout_returns_204(self):
+        self._login()
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_logout_destroys_session(self):
+        self._login()
+        self.client.post(self.logout_url)
+        # After logout the protected endpoint should reject the request
+        stock_url = reverse("stock-list-create")
+        response = self.client.get(stock_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # Unauthenticated
+
+    def test_unauthenticated_logout_returns_403(self):
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class UnauthenticatedAccessTests(TestCase):
+    """Verify protected endpoints reject unauthenticated requests."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_stock_list_requires_auth(self):
+        response = self.client.get(reverse("stock-list-create"))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ingredient_list_requires_auth(self):
+        response = self.client.get(reverse("ingredient-list-create"))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
