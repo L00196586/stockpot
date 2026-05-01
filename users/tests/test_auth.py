@@ -132,7 +132,8 @@ class LogoutViewTests(TestCase):
             "password": "SecurePass123!",
         }
 
-    # TODO: If there's time, this implementation (reusable function with POST request) could be implemented in other tests as well to reduce code duplication.
+    # TODO: If there's time, this implementation (reusable function with POST request) could be
+    # implemented in other tests as well to reduce code duplication.
     def _login(self):
         return self.client.post(self.login_url, self.login_payload, format="json")
 
