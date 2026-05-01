@@ -36,7 +36,7 @@ class LoginViewTests(TestCase):
         response = self.client.post(self.url, self.valid_payload, format="json")
         self.assertIn("id", response.data)
         self.assertIn("email", response.data)
-        self.assertEqual(response.data["email"], valid_payload["email"])
+        self.assertEqual(response.data["email"], self.valid_payload["email"])
 
     def test_login_does_not_return_password(self):
         response = self.client.post(self.url, self.valid_payload, format="json")
