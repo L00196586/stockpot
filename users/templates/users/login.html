@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in – StockPot</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous">
+</head>
+<body class="bg-light">
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+  <div class="card shadow-sm" style="width: 100%; max-width: 440px;">
+    <div class="card-body p-4">
+
+      <h1 class="h4 mb-1 fw-bold">StockPot</h1>
+      <p class="text-muted mb-4">Log in to your account</p>
+
+      <div id="alert" class="alert d-none" role="alert"></div>
+
+      <form id="login-form" novalidate>
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input type="email" class="form-control" id="email" name="email"
+                 placeholder="you@example.com" required autocomplete="email">
+        </div>
+
+        <div class="mb-4">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password"
+                 placeholder="Password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" id="submit-btn">
+          Log in
+        </button>
+      </form>
+
+      <hr class="my-3">
+      <p class="text-center text-muted small mb-0">
+        Don't have an account? <a href="/register/">Create one</a>
+      </p>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('login-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const alertBox = document.getElementById('alert');
+
+  function showAlert(message, type = 'danger') {
+    alertBox.className = `alert alert-${type}`;
+    alertBox.textContent = message;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.className = 'alert d-none';
+
+    const payload = {
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in…';
+
+    try {
+      const response = await fetch('/api/auth/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        // TODO: Redirect to dashboard or intended page after login
+      } else {
+        // Use a generic message regardless of the server error to prevent enumeration
+        showAlert('Invalid email or password. Please try again.');
+      }
+    } catch {
+      showAlert('A network error occurred. Please check your connection and try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Log in';
+    }
+  });
+</script>
+
+</body>
+</html>

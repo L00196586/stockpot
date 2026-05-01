@@ -13,6 +13,11 @@ class RegisterPageView(TemplateView):
     template_name = "users/register.html"
 
 
+class LoginPageView(TemplateView):
+    """GET /login/ — Login form HTML page."""
+    template_name = "users/login.html"
+
+
 class RegisterView(APIView):
     """
     POST /api/auth/register/
