@@ -1,3 +1,4 @@
+from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -6,12 +7,17 @@ from rest_framework.views import APIView
 from .serializers import RegisterSerializer
 
 
+class RegisterPageView(TemplateView):
+    """GET /register/ — Registration Form HTML page."""
+    template_name = "users/register.html"
+
+
 class RegisterView(APIView):
     """
     POST /api/auth/register/
-    Creates a new user account
+    Creates a new user account.
     Request:
-        email     — unique, case-insensitive, email address
+        email     — unique, case-insensitive email address
         password  — must satisfy Django's configured password validators
         password2 — must match password
 
