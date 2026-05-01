@@ -36,3 +36,20 @@ class RegisterView(APIView):
             {"id": user.pk, "email": user.email},
             status=status.HTTP_201_CREATED,
         )
+
+
+class LoginView(APIView):
+    """
+    POST /api/auth/login/
+    Authenticates the user and establishes their session.
+    Returns 200 with id and email on success.
+    Returns a generic error on failure to prevent user enumeration.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        login(request, user)
+        return Response({"id": user.pk, "email": user.email}, status=status.HTTP_200_OK)

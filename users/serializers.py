@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -34,3 +35,33 @@ class RegisterSerializer(serializers.Serializer):
         # Use email as username. Slice to respect the 150-char username field limit
         username = email[:150]
         return User.objects.create_user(username=username, email=email, password=password)
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate(self, attrs):
+        email = attrs["email"].lower()
+        password = attrs["password"]
+
+        # Username is set to the email on registration
+        user = authenticate(
+            request=self.context.get("request"),
+            username=email,
+            password=password,
+        )
+
+        # Generic message to prevent user enumeration
+        if user is None:
+            raise serializers.ValidationError(
+                {"non_field_errors": "Invalid email or password."}
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                {"non_field_errors": "Invalid email or password."}
+            )
+
+        attrs["user"] = user
+        return attrs
