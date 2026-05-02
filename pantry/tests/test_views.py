@@ -16,7 +16,7 @@ class IngredientListCreateViewTest(APITestCase):
         self.milk = Ingredient.objects.create(name="Milk", unit="L")
         self.url = reverse("ingredient-list-create")
 
-    # --- Authentication ---
+    # Authentication
 
     def test_list_requires_authentication(self):
         self.client.force_authenticate(user=None)
@@ -28,7 +28,7 @@ class IngredientListCreateViewTest(APITestCase):
         response = self.client.post(self.url, {"name": "Butter", "unit": "g"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # --- List ---
+    # List
 
     def test_list_returns_all_ingredients(self):
         response = self.client.get(self.url)
@@ -53,7 +53,7 @@ class IngredientListCreateViewTest(APITestCase):
         response = self.client.get(self.url, {"search": "zzzz"})
         self.assertEqual(response.data["count"], 0)
 
-    # --- Create ---
+    # Create
 
     def test_create_ingredient_returns_201(self):
         response = self.client.post(self.url, {"name": "Eggs", "unit": "pcs"}, format="json")
@@ -99,7 +99,7 @@ class StockItemListCreateViewTest(APITestCase):
         self.milk = Ingredient.objects.create(name="Milk", unit="L")
         self.url = reverse("stock-list-create")
 
-    # --- Authentication ---
+    # Authentication
 
     def test_list_requires_authentication(self):
         self.client.force_authenticate(user=None)
@@ -113,7 +113,7 @@ class StockItemListCreateViewTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # --- List ---
+    # List
 
     def test_list_returns_only_the_authenticated_users_items(self):
         StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
@@ -136,7 +136,7 @@ class StockItemListCreateViewTest(APITestCase):
         self.assertEqual(item["ingredient"]["name"], "Flour")
         self.assertEqual(item["ingredient"]["unit"], "g")
 
-    # --- Create ---
+    # Create
 
     def test_create_stock_item_returns_201(self):
         response = self.client.post(
@@ -222,14 +222,14 @@ class StockItemDetailViewTest(APITestCase):
         )
         self.url = reverse("stock-detail", args=[self.stock.pk])
 
-    # --- Authentication ---
+    # Authentication
 
     def test_retrieve_requires_authentication(self):
         self.client.force_authenticate(user=None)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # --- Retrieve ---
+    # Retrieve
 
     def test_retrieve_own_stock_item_returns_200(self):
         response = self.client.get(self.url)
@@ -247,7 +247,7 @@ class StockItemDetailViewTest(APITestCase):
         response = self.client.get(reverse("stock-detail", args=[other_stock.pk]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    # --- Update (PUT) ---
+    # Update (PUT)
 
     def test_put_updates_quantity_and_expiry_date(self):
         response = self.client.put(
@@ -284,7 +284,7 @@ class StockItemDetailViewTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    # --- Update (PATCH) ---
+    # Update (PATCH)
 
     def test_patch_updates_quantity_only(self):
         response = self.client.patch(self.url, {"quantity": "750.00"}, format="json")
@@ -319,7 +319,7 @@ class StockItemDetailViewTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    # --- Delete ---
+    # Delete
 
     def test_delete_removes_stock_item_and_returns_204(self):
         response = self.client.delete(self.url)

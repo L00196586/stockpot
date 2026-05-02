@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Ingredient, StockItem
 from .serializers import IngredientSerializer, StockItemReadSerializer, StockItemWriteSerializer
+from django.views.generic import TemplateView
 
 
 class IngredientListCreateView(generics.ListCreateAPIView):
@@ -55,3 +56,16 @@ class StockItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ("PUT", "PATCH"):
             return StockItemWriteSerializer
         return StockItemReadSerializer
+
+
+class PantryPageView(TemplateView):
+    """
+    GET /pantry/
+    My Stock dashboard HTML page.
+    """
+    template_name = "pantry/stock.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["unit_choices"] = Ingredient.Unit.choices
+        return context
