@@ -2,7 +2,12 @@ from unittest.mock import patch
 
 import requests
 from django.test import TestCase, override_settings
-from pantry.services import SpoonacularError, find_recipes_by_ingredients, get_recipe_details
+from pantry.services import (
+    SpoonacularError,
+    _build_diet_params,
+    find_recipes_by_ingredients,
+    get_recipe_details,
+)
 
 
 class RecipeSuggestionsServiceTest(TestCase):
@@ -123,6 +128,122 @@ class RecipeSuggestionsServiceTest(TestCase):
         result = find_recipes_by_ingredients(["Flour"])
 
         self.assertEqual(result[0]["image"], "")
+
+
+class RecipeDietaryFilteringServiceTest(TestCase):
+
+    def test_empty_diets_returns_empty_params(self):
+        self.assertEqual(_build_diet_params([]), {})
+
+    def test_vegetarian_maps_to_diet_param(self):
+        result = _build_diet_params(["vegetarian"])
+        self.assertEqual(result, {"diet": "vegetarian"})
+
+    def test_vegan_maps_to_diet_param(self):
+        result = _build_diet_params(["vegan"])
+        self.assertEqual(result, {"diet": "vegan"})
+
+    def test_keto_maps_to_ketogenic(self):
+        result = _build_diet_params(["keto"])
+        self.assertEqual(result, {"diet": "ketogenic"})
+
+    def test_gluten_free_maps_to_intolerance(self):
+        result = _build_diet_params(["gluten_free"])
+        self.assertEqual(result, {"intolerances": "gluten"})
+
+    def test_dairy_free_maps_to_intolerance(self):
+        result = _build_diet_params(["dairy_free"])
+        self.assertEqual(result, {"intolerances": "dairy"})
+
+    def test_nut_free_maps_to_two_intolerances(self):
+        result = _build_diet_params(["nut_free"])
+        intolerances = sorted(result["intolerances"].split(","))
+        self.assertIn("peanut", intolerances)
+        self.assertIn("tree nut", intolerances)
+
+    def test_unknown_key_is_ignored(self):
+        self.assertEqual(_build_diet_params(["non-existant"]), {})
+
+    def test_mixed_diet_and_intolerance(self):
+        result = _build_diet_params(["vegan", "gluten_free"])
+        self.assertEqual(result["diet"], "vegan")
+        self.assertEqual(result["intolerances"], "gluten")
+
+    @override_settings(SPOONACULAR_API_KEY="test-key")
+    @patch("pantry.services.requests.get")
+    def test_uses_complex_search_endpoint_when_diets_provided(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"results": []}
+
+        find_recipes_by_ingredients(["Flour"], diets=["vegan"])
+
+        called_url = mock_get.call_args.args[0]
+        self.assertIn("complexSearch", called_url)
+
+    @override_settings(SPOONACULAR_API_KEY="test-key")
+    @patch("pantry.services.requests.get")
+    def test_uses_find_by_ingredients_endpoint_when_no_diets(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = []
+
+        find_recipes_by_ingredients(["Flour"])
+
+        called_url = mock_get.call_args.args[0]
+        self.assertIn("findByIngredients", called_url)
+
+    @override_settings(SPOONACULAR_API_KEY="test-key")
+    @patch("pantry.services.requests.get")
+    def test_complex_search_response_is_unwrapped(self, mock_get):
+        api_response = {
+            "results": [
+                {
+                    "id": 10,
+                    "title": "Vegan Pasta",
+                    "image": "https://example.com/pasta.jpg",
+                    "usedIngredientCount": 3,
+                    "missedIngredientCount": 0,
+                    "usedIngredients": [{"name": "Pasta"}, {"name": "Tomato"}, {"name": "Basil"}],
+                    "missedIngredients": [],
+                }
+            ]
+        }
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = api_response
+
+        result = find_recipes_by_ingredients(["Pasta"], diets=["vegan"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], 10)
+        self.assertEqual(result[0]["title"], "Vegan Pasta")
+
+    @override_settings(SPOONACULAR_API_KEY="test-key")
+    @patch("pantry.services.requests.get")
+    def test_diet_params_are_passed_to_complex_search(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"results": []}
+
+        find_recipes_by_ingredients(["Flour"], diets=["vegan", "gluten_free"])
+
+        sent_params = mock_get.call_args.kwargs["params"]
+        self.assertEqual(sent_params["diet"], "vegan")
+        self.assertIn("gluten", sent_params["intolerances"])
+
+    @override_settings(SPOONACULAR_API_KEY="test-key")
+    @patch("pantry.services.requests.get")
+    def test_halal_kosher_do_not_add_extra_params(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"results": []}
+
+        find_recipes_by_ingredients(["Flour"], diets=["halal", "kosher"])
+
+        sent_params = mock_get.call_args.kwargs["params"]
+        self.assertNotIn("diet", sent_params)
+        self.assertNotIn("intolerances", sent_params)
 
 
 class RecipeDetailServiceTest(TestCase):
