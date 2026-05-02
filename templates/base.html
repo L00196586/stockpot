@@ -11,7 +11,21 @@
 
 {% block page_heading %}{% endblock %}
 
-{% block navbar %}{% endblock %}
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
+  <a class="navbar-brand fw-bold" href="/pantry/">StockPot</a>
+  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav ms-auto">
+      <li class="nav-item"><a class="nav-link" href="/pantry/">My Stock</a></li>
+      <li class="nav-item"><a class="nav-link" href="#">Recipes</a></li>
+      <li class="nav-item"><a class="nav-link" href="/profile/">Profile</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" id="logout-link">Log out</a></li>
+    </ul>
+  </div>
+</nav>
 
 {% block content %}{% endblock %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
