@@ -5,9 +5,41 @@
 {% block content %}
 <div class="container py-4">
 
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">Recipe Suggestions</h4>
-    <button class="btn btn-primary" id="btn-find-recipes">Find Recipes</button>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" type="button"
+              data-bs-toggle="collapse" data-bs-target="#filter-panel" aria-expanded="false">
+        &#9881; Dietary Filters
+      </button>
+      <button class="btn btn-primary" id="btn-find-recipes">Find Recipes</button>
+    </div>
+  </div>
+
+  <!-- Dietary filter panel -->
+  <div class="collapse mb-3" id="filter-panel">
+    <div class="card card-body">
+      <p class="small text-muted mb-2">
+        Select dietary filters to restrict your recipe suggestions. Filters are pre-filled from your
+        <a href="/profile/">Profile</a> settings.
+      </p>
+      <div class="row g-2" id="diet-checkboxes">
+        {% for key, label in dietary_choices %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="form-check">
+            <input class="form-check-input diet-filter" type="checkbox"
+                   id="diet-{{ key }}" value="{{ key }}">
+            <label class="form-check-label" for="diet-{{ key }}">{{ label }}</label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mt-2">
+        <button class="btn btn-sm btn-link p-0 text-muted" id="btn-clear-filters">
+          Clear all filters
+        </button>
+      </div>
+    </div>
   </div>
 
   <div id="alert-area"></div>
@@ -22,8 +54,8 @@
   <div class="row g-4" id="recipe-grid"></div>
 
   <div id="empty-state" class="text-center text-muted py-5 d-none">
-    <p class="mb-1">No recipes found for your current pantry.</p>
-    <p class="small">Try adding more ingredients to get better suggestions.</p>
+    <p class="mb-1">No recipes found for your current pantry and filters.</p>
+    <p class="small">Try adjusting your dietary filters or adding more ingredients.</p>
   </div>
 
 </div>
@@ -32,10 +64,27 @@
 {% block extra_js %}
 <script>
   const MATCH_URL      = '/api/recipes/match/';
-  const DETAILS_URL    = '/recipes/';
+  const PROFILE_URL    = '/api/auth/profile/';
   const FAVOURITES_URL = '/api/favourites/';
 
   let savedIds = new Set();
+
+  // Pre-populate checkboxes from the user's saved dietary preferences.
+  async function loadProfileFilters() {
+    try {
+      const resp = await fetch(PROFILE_URL, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      (data.dietary_preferences || []).forEach(key => {
+        const cb = document.getElementById(`diet-${key}`);
+        if (cb) cb.checked = true;
+      });
+    } catch { /* non-critical */ }
+  }
+
+  function getSelectedDiets() {
+    return Array.from(document.querySelectorAll('.diet-filter:checked')).map(cb => cb.value);
+  }
 
   async function loadFavouriteIds() {
     try {
@@ -43,7 +92,7 @@
       if (!resp.ok) return;
       const data = await resp.json();
       (data.results ?? data).forEach(f => savedIds.add(f.recipe_id));
-    } catch { /* TODO: Handle this case */ }
+    } catch { /* non-critical */ }
   }
 
   async function toggleFavourite(r, btn) {
@@ -90,28 +139,24 @@
   }
 
   function renderRecipes(recipes) {
-    const grid = document.getElementById('recipe-grid');
+    const grid  = document.getElementById('recipe-grid');
     const empty = document.getElementById('empty-state');
     grid.innerHTML = '';
-
-    if (!recipes.length) {
-      empty.classList.remove('d-none');
-      return;
-    }
+    if (!recipes.length) { empty.classList.remove('d-none'); return; }
     empty.classList.add('d-none');
 
     recipes.forEach(r => {
-      const detailUrl = `${DETAILS_URL}${r.id}/`;
-      const isSaved = savedIds.has(r.id);
+      const detailUrl      = `/recipes/${r.id}/`;
+      const isSaved        = savedIds.has(r.id);
       const favouriteLabel = isSaved ? '\u2665 Saved' : '\u2661 Save';
       const favouriteClass = isSaved ? 'btn-warning' : 'btn-outline-warning';
-      const usedBadge = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
-      const missBadge = r.missed_count ? `<span class="badge bg-secondary">${r.missed_count} missing</span>` : '';
-      const usedList  = r.used_ingredients.length
+      const usedBadge      = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
+      const missBadge      = r.missed_count ? `<span class="badge bg-secondary">${r.missed_count} missing</span>` : '';
+      const usedList       = r.used_ingredients.length
         ? `<p class="small text-muted mb-1"><strong>Have:</strong> ${r.used_ingredients.join(', ')}</p>` : '';
-      const missList  = r.missed_ingredients.length
+      const missList       = r.missed_ingredients.length
         ? `<p class="small text-muted mb-0"><strong>Missing:</strong> ${r.missed_ingredients.join(', ')}</p>` : '';
-      const imgHtml   = r.image
+      const imgHtml        = r.image
         ? `<img src="${r.image}" class="card-img-top" alt="${r.title}" style="height:180px;object-fit:cover;">`
         : `<div class="bg-light d-flex align-items-center justify-content-center" style="height:180px;"><span class="text-muted">No image</span></div>`;
 
@@ -142,8 +187,14 @@
     setLoading(true);
     document.getElementById('recipe-grid').innerHTML = '';
     document.getElementById('empty-state').classList.add('d-none');
+
+    const selectedDiets = getSelectedDiets();
+    const url = selectedDiets.length
+      ? `${MATCH_URL}?diets=${encodeURIComponent(selectedDiets.join(','))}`
+      : MATCH_URL;
+
     try {
-      const resp = await fetch(MATCH_URL, { credentials: 'same-origin' });
+      const resp = await fetch(url, { credentials: 'same-origin' });
       const data = await resp.json();
       if (!resp.ok) {
         showAlert(data.detail || 'An error occurred while fetching recipes.', resp.status === 429 ? 'warning' : 'danger');
@@ -158,6 +209,10 @@
     }
   });
 
+  document.getElementById('btn-clear-filters').addEventListener('click', () => {
+    document.querySelectorAll('.diet-filter').forEach(cb => cb.checked = false);
+  });
+
   document.getElementById('logout-link').addEventListener('click', e => {
     e.preventDefault();
     fetch('/api/auth/logout/', {
@@ -167,5 +222,6 @@
   });
 
   loadFavouriteIds();
+  loadProfileFilters();
 </script>
 {% endblock %}

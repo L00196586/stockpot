@@ -82,6 +82,10 @@ class RecipeMatchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Parse optional comma-separated dietary filter param: ?diets=vegan,gluten_free
+        diets_param = request.query_params.get("diets", "").strip()
+        diets = [d.strip() for d in diets_param.split(",") if d.strip()] or None
+
         ingredient_names = list(
             StockItem.objects.filter(user=request.user)
             .select_related("ingredient")
@@ -95,7 +99,7 @@ class RecipeMatchView(APIView):
             )
 
         try:
-            recipes = find_recipes_by_ingredients(ingredient_names)
+            recipes = find_recipes_by_ingredients(ingredient_names, diets=diets)
         except SpoonacularError as e:
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE
             if e.status_code == 402:
@@ -111,6 +115,13 @@ class RecipeSuggestionsPageView(TemplateView):
     Recipe suggestions HTML page.
     """
     template_name = "pantry/recipes.html"
+
+    # TODO: This type of implementation could help to simplify JS in other views
+    def get_context_data(self, **kwargs):
+        from users.models import DIETARY_CHOICES
+        context = super().get_context_data(**kwargs)
+        context["dietary_choices"] = DIETARY_CHOICES
+        return context
 
 
 class RecipeDetailView(APIView):
