@@ -9,8 +9,6 @@ DIETARY_CHOICES = [
     ("gluten_free", "Gluten Free"),
     ("dairy_free", "Dairy Free"),
     ("nut_free", "Nut Free"),
-    ("halal", "Halal"),
-    ("kosher", "Kosher"),
     ("keto", "Keto"),
 ]
 
