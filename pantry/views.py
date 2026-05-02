@@ -66,6 +66,6 @@ class PantryPageView(TemplateView):
     template_name = "pantry/stock.html"
 
     def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["unit_choices"] = Ingredient.Unit.choices
-        return ctx
+        context = super().get_context_data(**kwargs)
+        context["unit_choices"] = Ingredient.Unit.choices
+        return context
