@@ -1,11 +1,12 @@
 import datetime
-
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
-
+from unittest.mock import patch
 from pantry.models import Ingredient, StockItem
+from pantry.services import SpoonacularError
 
 
 class IngredientListCreateViewTest(APITestCase):
@@ -338,3 +339,124 @@ class StockItemDetailViewTest(APITestCase):
         self.client.force_authenticate(user=None)
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class RecipeMatchViewTest(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
+        self.client.force_authenticate(user=self.user)
+        self.flour = Ingredient.objects.create(name="Flour", unit="g")
+        self.milk = Ingredient.objects.create(name="Milk", unit="L")
+        self.url = reverse("recipe-match")
+        self.expected_recipe = {
+            "id": 1,
+            "title": "Pancakes",
+            "image": "https://example.com/pancakes.jpg",
+            "used_count": 2,
+            "missed_count": 1,
+            "used_ingredients": ["Flour", "Milk"],
+            "missed_ingredients": ["Eggs"],
+        }
+
+    def test_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_empty_pantry_returns_200_with_detail_message(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+        self.assertIn("empty", response.data["detail"].lower())
+
+    @patch("pantry.views.find_recipes_by_ingredients")
+    def test_returns_recipes_when_pantry_has_items(self, mock_service):
+        mock_service.return_value = [self.expected_recipe]
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        StockItem.objects.create(user=self.user, ingredient=self.milk, quantity=1)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Pancakes")
+
+    @patch("pantry.views.find_recipes_by_ingredients")
+    def test_only_sends_logged_user_ingredients_to_service(self, mock_service):
+        mock_service.return_value = [self.expected_recipe]
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        StockItem.objects.create(user=self.other_user, ingredient=self.milk, quantity=1)
+
+        self.client.get(self.url)
+
+        sent_names = mock_service.call_args[0][0]
+        self.assertEqual(sent_names, ["Flour"])
+
+    @patch(
+        "pantry.views.find_recipes_by_ingredients",
+        side_effect=SpoonacularError("quota exceeded", status_code=402),
+    )
+    def test_quota_exceeded_returns_402(self, mock_service):
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertIn("detail", response.data)
+
+    @patch(
+        "pantry.views.find_recipes_by_ingredients",
+        side_effect=SpoonacularError("service unavailable", status_code=503),
+    )
+    def test_other_service_errors_return_503(self, mock_service):
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @patch(
+        "pantry.views.find_recipes_by_ingredients",
+        side_effect=SpoonacularError("timed out"),
+    )
+    def test_service_error_without_status_code_returns_503(self, mock_service):
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @patch("pantry.views.find_recipes_by_ingredients", return_value=[])
+    def test_returns_empty_list_when_no_matching_recipes(self, mock_service):
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+
+class RecipeSuggestionsPageViewTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.url = reverse("recipes-page")
+
+    def test_renders_recipes_template(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "pantry/recipes.html")
+
+
+class PantryPageViewTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.url = reverse("pantry-page")
+
+    def test_renders_stock_template(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "pantry/stock.html")
+
+    def test_context_includes_unit_choices(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertIn("unit_choices", response.context)
+        self.assertTrue(len(response.context["unit_choices"]) > 0)
