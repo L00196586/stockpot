@@ -21,6 +21,7 @@
       <div id="alert" class="alert d-none" role="alert"></div>
 
       <form id="register-form" novalidate>
+        {% csrf_token %}
         <div class="mb-3">
           <label for="email" class="form-label">Email address</label>
           <input type="email" class="form-control" id="email" name="email"
@@ -55,6 +56,10 @@
   const form = document.getElementById('register-form');
   const submitBtn = document.getElementById('submit-btn');
   const alertBox = document.getElementById('alert');
+
+  function getCsrf() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+  }
 
   function clearErrors() {
     alertBox.className = 'alert d-none';
@@ -95,7 +100,10 @@
     try {
       const response = await fetch('/api/auth/register/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrf(),
+        },
         body: JSON.stringify(payload),
       });
 

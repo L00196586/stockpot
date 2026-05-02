@@ -1,11 +1,12 @@
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import LoginSerializer, RegisterSerializer
+from .models import DIETARY_CHOICES
+from .serializers import LoginSerializer, ProfileSerializer, RegisterSerializer
 
 
 class RegisterPageView(TemplateView):
@@ -14,7 +15,10 @@ class RegisterPageView(TemplateView):
 
 
 class LoginPageView(TemplateView):
-    """GET /login/ — Login form HTML page."""
+    """
+    GET /login/
+    Login form HTML page.
+    """
     template_name = "users/login.html"
 
 
@@ -72,3 +76,43 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProfilePageView(TemplateView):
+    """
+    GET /profile/
+    Profile settings HTML page.
+    """
+    template_name = "users/profile.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["dietary_choices"] = DIETARY_CHOICES
+        return ctx
+
+
+class ProfileView(APIView):
+    """
+    GET  /api/auth/profile/ — Return current user's profile.
+    PATCH /api/auth/profile/ — Update user's profile data.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile = user.profile
+        return Response({
+            "email": user.email,
+            "dietary_preferences": profile.dietary_preferences,
+        })
+
+    def patch(self, request):
+        user = request.user
+        serializer = ProfileSerializer(
+            user, data=request.data, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        if serializer.validated_data.get("new_password"):
+            update_session_auth_hash(request, user)
+        return Response({"email": user.email}, status=status.HTTP_200_OK)

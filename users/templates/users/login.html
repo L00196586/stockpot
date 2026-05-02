@@ -21,6 +21,7 @@
       <div id="alert" class="alert d-none" role="alert"></div>
 
       <form id="login-form" novalidate>
+        {% csrf_token %}
         <div class="mb-3">
           <label for="email" class="form-label">Email address</label>
           <input type="email" class="form-control" id="email" name="email"
@@ -52,6 +53,10 @@
   const submitBtn = document.getElementById('submit-btn');
   const alertBox = document.getElementById('alert');
 
+  function getCsrf() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+  }
+
   function showAlert(message, type = 'danger') {
     alertBox.className = `alert alert-${type}`;
     alertBox.textContent = message;
@@ -72,12 +77,16 @@
     try {
       const response = await fetch('/api/auth/login/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrf(),
+        },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        // TODO: Redirect to dashboard or intended page after login
+        {#  Should be the dashboard but still not done #}
+        window.location.href = '/profile/';
       } else {
         // Use a generic message regardless of the server error to prevent enumeration
         showAlert('Invalid email or password. Please try again.');
