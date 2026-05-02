@@ -32,5 +32,5 @@
 
 ## Notes for reviewers
 
-<!-- Anything the reviewer should pay particular attention to:
+<!-- Optional: Anything the reviewer should pay particular attention to:
      tricky logic, design decisions, potential side effects, etc. -->
