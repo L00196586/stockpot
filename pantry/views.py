@@ -172,3 +172,10 @@ class FavouriteDeleteView(generics.DestroyAPIView):
             SavedRecipe, user=self.request.user, recipe_id=recipe_id
         )
 
+
+class FavouritesPageView(TemplateView):
+    """
+    GET /favourites/
+    Favourites HTML page.
+    """
+    template_name = "pantry/favourites.html"
