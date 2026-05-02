@@ -97,6 +97,9 @@
       if (response.ok) {
         form.classList.add('d-none');
         showAlert(`Account created for ${data.email}. You can now log in.`, 'success');
+        setTimeout(function() {
+            window.location.href = '/login/';
+        }, 3500);
       } else {
         const fieldNames = ['email', 'password', 'password2'];
         let hasFieldError = false;
