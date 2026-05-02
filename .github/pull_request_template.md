@@ -30,16 +30,6 @@
 - [ ] All new and existing tests pass locally (`python manage.py test pantry`)
 - [ ] Test coverage has not dropped below 80 %
 
-## CI checks
-
-<!-- All of the following must be green before this PR can be merged. -->
-
-- [ ] Python Lint (Flake8) passes
-- [ ] Frontend Lint (ESLint) passes
-- [ ] Security Scan (Bandit) passes
-- [ ] Tests & Coverage gate passes
-- [ ] Docker Build & Push succeeds
-
 ## Notes for reviewers
 
 <!-- Anything the reviewer should pay particular attention to:
