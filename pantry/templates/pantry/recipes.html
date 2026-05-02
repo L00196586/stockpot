@@ -64,6 +64,7 @@
 {% block extra_js %}
 <script>
   const MATCH_URL      = '/api/recipes/match/';
+  const DETAILS_URL    = '/recipes/';
   const PROFILE_URL    = '/api/auth/profile/';
   const FAVOURITES_URL = '/api/favourites/';
 
@@ -146,7 +147,7 @@
     empty.classList.add('d-none');
 
     recipes.forEach(r => {
-      const detailUrl      = `/recipes/${r.id}/`;
+      const detailUrl      = `${DETAILS_URL}${r.id}/`;
       const isSaved        = savedIds.has(r.id);
       const favouriteLabel = isSaved ? '\u2665 Saved' : '\u2661 Save';
       const favouriteClass = isSaved ? 'btn-warning' : 'btn-outline-warning';
