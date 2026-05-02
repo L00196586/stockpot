@@ -103,3 +103,11 @@ class RecipeMatchView(APIView):
             return Response({"detail": str(e)}, status=http_status)
 
         return Response(recipes, status=status.HTTP_200_OK)
+
+
+class RecipeSuggestionsPageView(TemplateView):
+    """
+    GET /recipes/
+    Recipe suggestions HTML page.
+    """
+    template_name = "pantry/recipes.html"
