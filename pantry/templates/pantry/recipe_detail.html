@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Recipe Details – StockPot{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="detail-container">
+
+  <!-- Loading state -->
+  <div id="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+    <p class="text-muted mt-2">Loading recipe…</p>
+  </div>
+
+  <!-- Error -->
+  <div id="error-state" class="d-none">
+    <a href="/recipes/" class="btn btn-outline-secondary btn-sm mb-3">← Back to Recipes</a>
+    <div id="error-alert" class="alert alert-danger"></div>
+  </div>
+
+  <!-- Recipe detail -->
+  <div id="recipe-detail" class="d-none">
+
+    <a href="/recipes/" class="btn btn-outline-secondary btn-sm mb-4">← Back to Recipes</a>
+
+    <div class="row g-4">
+
+      <!-- Left column -->
+      <div class="col-lg-4">
+        <img id="recipe-image" src="" alt="" class="img-fluid rounded shadow-sm mb-3 w-100"
+             style="max-height:280px;object-fit:cover;">
+
+        <div class="card mb-3">
+          <div class="card-header fw-semibold">Timing</div>
+          <ul class="list-group list-group-flush" id="timing-list"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header fw-semibold">Nutrition</div>
+          <ul class="list-group list-group-flush" id="nutrition-list"></ul>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="col-lg-8">
+        <h2 id="recipe-title" class="fw-bold mb-4"></h2>
+
+        <h5 class="fw-semibold mb-3">Instructions</h5>
+        <div id="instructions-empty" class="text-muted d-none">
+          No step-by-step instructions available for this recipe.
+        </div>
+        <ol class="list-group list-group-numbered" id="instructions-list"></ol>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const RECIPE_ID  = {{ recipe_id }};
+  const DETAIL_URL = `/api/recipes/${RECIPE_ID}/`;
+
+  function showError(msg) {
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('error-state').classList.remove('d-none');
+    document.getElementById('error-alert').textContent = msg;
+  }
+
+  function timingRow(label, value) {
+    const display = (value !== null && value !== undefined) ? `${value} min` : 'N/A';
+    return `<li class="list-group-item d-flex justify-content-between">
+              <span>${label}</span><span class="fw-semibold">${display}</span>
+            </li>`;
+  }
+
+  function renderDetail(r) {
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('recipe-detail').classList.remove('d-none');
+
+    document.getElementById('recipe-title').textContent = r.title;
+
+    const img = document.getElementById('recipe-image');
+    if (r.image) {
+      img.src = r.image;
+      img.alt = r.title;
+    } else {
+      img.parentElement.innerHTML =
+        `<div class="bg-light rounded d-flex align-items-center justify-content-center mb-3"
+              style="height:200px;"><span class="text-muted">No image available</span></div>`;
+    }
+
+    // Timing
+    document.getElementById('timing-list').innerHTML =
+      timingRow('Total time',       r.ready_in_minutes) +
+      timingRow('Preparation time', r.prep_minutes) +
+      timingRow('Cooking time',     r.cook_minutes);
+
+    // Nutrition
+    const nutritionList = document.getElementById('nutrition-list');
+    if (r.nutrition && r.nutrition.length) {
+      nutritionList.innerHTML = r.nutrition
+        .map(n => `<li class="list-group-item d-flex justify-content-between">
+                     <span>${n.name}</span>
+                     <span class="fw-semibold">${n.amount} ${n.unit}</span>
+                   </li>`)
+        .join('');
+    } else {
+      nutritionList.innerHTML =
+        '<li class="list-group-item text-muted">Nutritional data not available.</li>';
+    }
+
+    // Instructions
+    const instructionsList = document.getElementById('instructions-list');
+    if (r.instructions && r.instructions.length) {
+      instructionsList.innerHTML = r.instructions
+        .map(s => `<li class="list-group-item">${s.step}</li>`)
+        .join('');
+    } else {
+      document.getElementById('instructions-empty').classList.remove('d-none');
+    }
+  }
+
+  async function loadRecipe() {
+    try {
+      const resp = await fetch(DETAIL_URL, { credentials: 'same-origin' });
+      if (resp.status === 401 || resp.status === 403) {
+        window.location.href = '/login/';
+        return;
+      }
+      const data = await resp.json();
+      if (!resp.ok) {
+        showError(data.detail || 'Could not load recipe details.');
+        return;
+      }
+      renderDetail(data);
+    } catch {
+      showError('Could not reach the recipe service. Please check your connection and try again.');
+    }
+  }
+
+  loadRecipe();
+
+  document.getElementById('logout-link').addEventListener('click', e => {
+    e.preventDefault();
+    fetch('/api/auth/logout/', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': getCsrf() },
+    }).then(() => { window.location.href = '/login/'; });
+  });
+</script>
+{% endblock %}

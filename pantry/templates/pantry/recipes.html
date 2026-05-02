@@ -37,7 +37,7 @@
 {% block extra_js %}
 <script>
   const MATCH_URL = '/api/recipes/match/';
-  const SPOONACULAR_RECIPES_URL = 'https://spoonacular.com/recipes/';
+  const DETAILS_URL = '/recipes/';
 
   function showAlert(msg, type = 'danger') {
     document.getElementById('alert-area').innerHTML =
@@ -68,6 +68,7 @@
     empty.classList.add('d-none');
 
     recipes.forEach(r => {
+      const detailUrl  = `${DETAILS_URL}${r.id}/`;
       const usedBadge  = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
       const missBadge  = r.missed_count
         ? `<span class="badge bg-secondary">${r.missed_count} missing</span>`
@@ -88,19 +89,18 @@
       col.className = 'col-sm-6 col-lg-4';
       col.innerHTML = `
         <div class="card h-100 shadow-sm">
-          <a href="${SPOONACULAR_RECIPES_URL}${encodeURIComponent(r.title.toLowerCase().replace(/\s+/g, '-'))}-${r.id}"
-             target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
+          <a href="${detailUrl}" class="text-decoration-none text-dark">
             ${imgHtml}
           </a>
           <div class="card-body d-flex flex-column">
             <h6 class="card-title fw-semibold mb-2">
-              <a href="${SPOONACULAR_RECIPES_URL}${encodeURIComponent(r.title.toLowerCase().replace(/\s+/g, '-'))}-${r.id}"
-                 target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
-                ${r.title}
-              </a>
+              <a href="${detailUrl}" class="text-decoration-none text-dark">${r.title}</a>
             </h6>
             <div class="mb-2">${usedBadge}${missBadge}</div>
             ${usedList}${missList}
+            <div class="mt-auto pt-2">
+              <a href="${detailUrl}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
+            </div>
           </div>
         </div>`;
       grid.appendChild(col);

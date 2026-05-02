@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from .models import Ingredient, StockItem
 from .serializers import IngredientSerializer, StockItemReadSerializer, StockItemWriteSerializer
-from .services import SpoonacularError, find_recipes_by_ingredients
+from .services import SpoonacularError, find_recipes_by_ingredients, get_recipe_details
 from django.views.generic import TemplateView
 
 
@@ -111,3 +111,38 @@ class RecipeSuggestionsPageView(TemplateView):
     Recipe suggestions HTML page.
     """
     template_name = "pantry/recipes.html"
+
+
+class RecipeDetailView(APIView):
+    """
+    GET /api/recipes/<recipe_id>/
+    Returns details for a single recipe.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, recipe_id):
+        try:
+            details = get_recipe_details(recipe_id)
+        except SpoonacularError as e:
+            if e.status_code == 402:
+                http_status = status.HTTP_429_TOO_MANY_REQUESTS
+            elif e.status_code == 404:
+                http_status = status.HTTP_404_NOT_FOUND
+            else:
+                http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+            return Response({"detail": str(e)}, status=http_status)
+
+        return Response(details, status=status.HTTP_200_OK)
+
+
+class RecipeDetailPageView(TemplateView):
+    """
+    GET /recipes/<recipe_id>/
+    Recipe detail HTML page.
+    """
+    template_name = "pantry/recipe_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["recipe_id"] = kwargs.get("recipe_id")
+        return context

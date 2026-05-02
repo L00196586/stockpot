@@ -460,3 +460,85 @@ class PantryPageViewTest(TestCase):
         response = self.client.get(self.url)
         self.assertIn("unit_choices", response.context)
         self.assertTrue(len(response.context["unit_choices"]) > 0)
+
+
+class RecipeDetailViewTest(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.client.force_authenticate(user=self.user)
+        self.url_name = "recipe-detail"
+        self.recipe_id = 42
+        self.sample_details = {
+            "id": 42,
+            "title": "Spaghetti Bolognese",
+            "image": "https://example.com/spag.jpg",
+            "ready_in_minutes": 60,
+            "prep_minutes": 15,
+            "cook_minutes": 45,
+            "nutrition": [{"name": "Calories", "amount": 550, "unit": "kcal"}],
+            "instructions": [{"number": 1, "step": "Boil the pasta."}],
+        }
+
+    def test_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(reverse(self.url_name, args=[self.recipe_id]))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("pantry.views.get_recipe_details")
+    def test_returns_recipe_details_on_success(self, mock_service):
+        mock_service.return_value = self.sample_details
+        response = self.client.get(reverse(self.url_name, args=[self.recipe_id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], 42)
+        self.assertEqual(response.data["title"], "Spaghetti Bolognese")
+
+    @patch("pantry.views.get_recipe_details")
+    def test_calls_service_with_correct_recipe_id(self, mock_service):
+        mock_service.return_value = self.sample_details
+        self.client.get(reverse(self.url_name, args=[self.recipe_id]))
+        mock_service.assert_called_once_with(self.recipe_id)
+
+    @patch(
+        "pantry.views.get_recipe_details",
+        side_effect=SpoonacularError("not found", status_code=404),
+    )
+    def test_recipe_not_found_returns_404(self, mock_service):
+        response = self.client.get(reverse(self.url_name, args=[99999]))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("detail", response.data)
+
+    @patch(
+        "pantry.views.get_recipe_details",
+        side_effect=SpoonacularError("quota exceeded", status_code=402),
+    )
+    def test_quota_exceeded_returns_429(self, mock_service):
+        response = self.client.get(reverse(self.url_name, args=[self.recipe_id]))
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    @patch(
+        "pantry.views.get_recipe_details",
+        side_effect=SpoonacularError("service error", status_code=500),
+    )
+    def test_other_service_errors_return_503(self, mock_service):
+        response = self.client.get(reverse(self.url_name, args=[self.recipe_id]))
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class RecipeDetailPageViewTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.recipe_id = 42
+        self.url = reverse("recipe-detail-page", args=[self.recipe_id])
+
+    def test_renders_recipe_detail_template(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "pantry/recipe_detail.html")
+
+    def test_context_contains_recipe_id(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.context["recipe_id"], self.recipe_id)
