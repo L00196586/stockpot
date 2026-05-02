@@ -1,16 +1,12 @@
 import datetime
-
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
-
 from unittest.mock import patch
-
 from pantry.models import Ingredient, StockItem
 from pantry.services import SpoonacularError
-
 
 
 class IngredientListCreateViewTest(APITestCase):
@@ -343,7 +339,6 @@ class StockItemDetailViewTest(APITestCase):
         self.client.force_authenticate(user=None)
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
 
 
 class RecipeMatchViewTest(APITestCase):
