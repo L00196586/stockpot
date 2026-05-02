@@ -8,21 +8,24 @@
   <!-- Loading state -->
   <div id="loading" class="text-center py-5">
     <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading…</span>
+      <span class="visually-hidden">Loading...</span>
     </div>
-    <p class="text-muted mt-2">Loading recipe…</p>
+    <p class="text-muted mt-2">Loading recipe...</p>
   </div>
 
   <!-- Error -->
   <div id="error-state" class="d-none">
-    <a href="/recipes/" class="btn btn-outline-secondary btn-sm mb-3">← Back to Recipes</a>
+    <a href="/recipes/" class="btn btn-outline-secondary btn-sm mb-3">&larr; Back to Recipes</a>
     <div id="error-alert" class="alert alert-danger"></div>
   </div>
 
   <!-- Recipe detail -->
   <div id="recipe-detail" class="d-none">
 
-    <a href="/recipes/" class="btn btn-outline-secondary btn-sm mb-4">← Back to Recipes</a>
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="/recipes/" class="btn btn-outline-secondary btn-sm">&larr; Back to Recipes</a>
+      <button id="fav-btn" class="btn btn-sm btn-outline-warning">&#9825; Save to Favourites</button>
+    </div>
 
     <div class="row g-4">
 
@@ -61,8 +64,11 @@
 
 {% block extra_js %}
 <script>
-  const RECIPE_ID  = {{ recipe_id }};
-  const DETAIL_URL = `/api/recipes/${RECIPE_ID}/`;
+  const RECIPE_ID      = {{ recipe_id }};
+  const DETAIL_URL     = `/api/recipes/${RECIPE_ID}/`;
+  const FAVOURITES_URL = '/api/favourites/';
+
+  let currentRecipe = null;
 
   function showError(msg) {
     document.getElementById('loading').classList.add('d-none');
@@ -77,10 +83,57 @@
             </li>`;
   }
 
+  function setFavouriteBtn(isSaved) {
+    const btn = document.getElementById('fav-btn');
+    if (isSaved) {
+      btn.textContent = '\u2665 Saved to Favourites';
+      btn.className = 'btn btn-sm btn-warning';
+    } else {
+      btn.textContent = '\u2661 Save to Favourites';
+      btn.className = 'btn btn-sm btn-outline-warning';
+    }
+  }
+
+  async function checkFavouriteStatus() {
+    try {
+      const resp = await fetch(FAVOURITES_URL, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const saved = (data.results ?? data).some(f => f.recipe_id === RECIPE_ID);
+      setFavouriteBtn(saved);
+    } catch { /* non-critical */ }
+  }
+
+  async function toggleFavourite() {
+    const btn = document.getElementById('fav-btn');
+    const isSaved = btn.classList.contains('btn-warning');
+
+    if (isSaved) {
+      const resp = await fetch(`${FAVOURITES_URL}${RECIPE_ID}/`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': getCsrf() },
+      });
+      if (resp.ok || resp.status === 204) setFavouriteBtn(false);
+    } else {
+      const resp = await fetch(FAVOURITES_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({
+          recipe_id: RECIPE_ID,
+          title: currentRecipe ? currentRecipe.title : '',
+          image: currentRecipe ? currentRecipe.image : '',
+        }),
+      });
+      if (resp.ok || resp.status === 201) setFavouriteBtn(true);
+    }
+  }
+
   function renderDetail(r) {
+    currentRecipe = r;
     document.getElementById('loading').classList.add('d-none');
     document.getElementById('recipe-detail').classList.remove('d-none');
-
     document.getElementById('recipe-title').textContent = r.title;
 
     const img = document.getElementById('recipe-image');
@@ -93,13 +146,11 @@
               style="height:200px;"><span class="text-muted">No image available</span></div>`;
     }
 
-    // Timing
     document.getElementById('timing-list').innerHTML =
       timingRow('Total time',       r.ready_in_minutes) +
       timingRow('Preparation time', r.prep_minutes) +
       timingRow('Cooking time',     r.cook_minutes);
 
-    // Nutrition
     const nutritionList = document.getElementById('nutrition-list');
     if (r.nutrition && r.nutrition.length) {
       nutritionList.innerHTML = r.nutrition
@@ -109,11 +160,9 @@
                    </li>`)
         .join('');
     } else {
-      nutritionList.innerHTML =
-        '<li class="list-group-item text-muted">Nutritional data not available.</li>';
+      nutritionList.innerHTML = '<li class="list-group-item text-muted">Nutritional data not available.</li>';
     }
 
-    // Instructions
     const instructionsList = document.getElementById('instructions-list');
     if (r.instructions && r.instructions.length) {
       instructionsList.innerHTML = r.instructions
@@ -122,6 +171,8 @@
     } else {
       document.getElementById('instructions-empty').classList.remove('d-none');
     }
+
+    checkFavouriteStatus();
   }
 
   async function loadRecipe() {
@@ -142,7 +193,7 @@
     }
   }
 
-  loadRecipe();
+  document.getElementById('fav-btn').addEventListener('click', toggleFavourite);
 
   document.getElementById('logout-link').addEventListener('click', e => {
     e.preventDefault();
@@ -152,5 +203,7 @@
       headers: { 'X-CSRFToken': getCsrf() },
     }).then(() => { window.location.href = '/login/'; });
   });
+
+  loadRecipe();
 </script>
 {% endblock %}
