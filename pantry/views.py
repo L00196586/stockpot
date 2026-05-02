@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Ingredient, StockItem
-from .serializers import IngredientSerializer, StockItemReadSerializer, StockItemWriteSerializer
+from .models import Ingredient, SavedRecipe, StockItem
+from .serializers import IngredientSerializer, SavedRecipeSerializer, StockItemReadSerializer, StockItemWriteSerializer
 from .services import SpoonacularError, find_recipes_by_ingredients, get_recipe_details
 from django.views.generic import TemplateView
 
@@ -146,3 +146,29 @@ class RecipeDetailPageView(TemplateView):
         context = super().get_context_data(**kwargs)
         context["recipe_id"] = kwargs.get("recipe_id")
         return context
+
+
+class FavouriteListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/favourites/ — List the authenticated user's saved recipes.
+    POST /api/favourites/ — Save a recipe to favourites.
+    """
+    serializer_class = SavedRecipeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedRecipe.objects.filter(user=self.request.user)
+
+
+class FavouriteDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/favourites/<recipe_id>/ — Remove a recipe from favourites by Spoonacular recipe ID.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        recipe_id = self.kwargs["recipe_id"]
+        return generics.get_object_or_404(
+            SavedRecipe, user=self.request.user, recipe_id=recipe_id
+        )
+
