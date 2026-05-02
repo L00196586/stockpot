@@ -6,12 +6,12 @@
 
 <!-- Mark the applicable option with an [x]. -->
 
-- [ ] 🐛 Bug fix
-- [ ] ✨ New feature
-- [ ] ♻️ Refactor (no functional change)
-- [ ] 🧪 Tests only
-- [ ] 📄 Documentation
-- [ ] 🔧 Configuration / DevOps
+- [ ] Bug fix
+- [ ] New feature
+- [ ]️ Refactor (no functional change)
+- [ ] Tests only
+- [ ] Documentation
+- [ ] Configuration / DevOps
 
 ## Related issue(s)
 
