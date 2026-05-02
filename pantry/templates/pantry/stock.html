@@ -77,17 +77,23 @@
           <div id="modal-alert" class="alert alert-danger d-none"></div>
 
           <input type="hidden" id="edit-id">
+          <input type="hidden" id="ingredient-id">
 
           <div class="mb-3">
-            <label for="ingredient-search" class="form-label">Ingredient</label>
-            <input type="text" class="form-control" id="ingredient-search" placeholder="Search ingredient…" autocomplete="off">
+            <label for="ingredient-search" class="form-label">Ingredient name</label>
+            <input type="text" class="form-control" id="ingredient-search" placeholder="Type to search or add new…" autocomplete="off" required>
             <div id="ingredient-suggestions" class="list-group mt-1 position-absolute w-100" style="z-index:1055; max-height:200px; overflow-y:auto;"></div>
-            <input type="hidden" id="ingredient-id">
+            <div class="form-text" id="ingredient-hint"></div>
           </div>
 
           <div class="mb-3">
             <label for="item-unit" class="form-label">Unit</label>
-            <input type="text" class="form-control" id="item-unit" readonly placeholder="Unit">
+            <select class="form-select" id="item-unit" required>
+              <option value="" disabled selected>Select unit…</option>
+              {% for value, label in unit_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
           </div>
 
           <div class="mb-3">
@@ -209,22 +215,41 @@
 
   function loadStock() {
     fetch(STOCK_URL, { credentials: 'same-origin' })
-      .then(r => r.json())
-      .then(data => { allItems = data; renderTable(data); })
+      .then(r => {
+        if (r.status === 403) { window.location.href = '/login/'; return null; }
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (!data) return;
+        const items = data.results ?? data;
+        allItems = items;
+        renderTable(items);
+      })
       .catch(() => console.error('Failed to load stock.'));
   }
 
   const searchInput = document.getElementById('ingredient-search');
   const suggestionsBox = document.getElementById('ingredient-suggestions');
+  const ingredientHint = document.getElementById('ingredient-hint');
 
+  // Autocomplete: search existing ingredients as the user types
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.trim();
-    if (q.length < 1) { suggestionsBox.innerHTML = ''; return; }
+    // Clear the stored ingredient id whenever the user changes the text
+    document.getElementById('ingredient-id').value = '';
+    if (q.length < 1) { suggestionsBox.innerHTML = ''; ingredientHint.textContent = ''; return; }
     fetch(`${INGREDIENTS_URL}?search=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
       .then(r => r.json())
       .then(data => {
         suggestionsBox.innerHTML = '';
-        data.results ? data.results.forEach(addSuggestion) : data.forEach(addSuggestion);
+        const results = data.results ?? data;
+        results.forEach(addSuggestion);
+        if (results.length === 0) {
+          ingredientHint.textContent = 'No match. A new ingredient will be created on save.';
+        } else {
+          ingredientHint.textContent = '';
+        }
       });
   });
 
@@ -236,8 +261,12 @@
     a.addEventListener('click', () => {
       document.getElementById('ingredient-id').value = ing.id;
       searchInput.value = ing.name;
-      document.getElementById('item-unit').value = ing.unit;
+      // Lock unit to the existing ingredient's unit
+      const unitSelect = document.getElementById('item-unit');
+      unitSelect.value = ing.unit;
+      unitSelect.disabled = true;
       suggestionsBox.innerHTML = '';
+      ingredientHint.textContent = '';
     });
     suggestionsBox.appendChild(a);
   }
@@ -248,14 +277,24 @@
     }
   });
 
+  // Re-enable unit when user clears the ingredient field
+  searchInput.addEventListener('change', () => {
+    if (!document.getElementById('ingredient-id').value) {
+      document.getElementById('item-unit').disabled = false;
+    }
+  });
+
   document.getElementById('btn-add-item').addEventListener('click', () => {
     document.getElementById('itemModalLabel').textContent = 'Add Item';
     document.getElementById('edit-id').value = '';
     document.getElementById('ingredient-search').value = '';
     document.getElementById('ingredient-id').value = '';
-    document.getElementById('item-unit').value = '';
+    const unitSelect = document.getElementById('item-unit');
+    unitSelect.value = '';
+    unitSelect.disabled = false;
     document.getElementById('item-quantity').value = '';
     document.getElementById('item-expiry').value = '';
+    ingredientHint.textContent = '';
     hideModalAlert();
   });
 
@@ -266,9 +305,12 @@
     document.getElementById('edit-id').value = item.id;
     document.getElementById('ingredient-search').value = item.ingredient.name;
     document.getElementById('ingredient-id').value = item.ingredient.id;
-    document.getElementById('item-unit').value = item.ingredient.unit;
+    const unitSelect = document.getElementById('item-unit');
+    unitSelect.value = item.ingredient.unit;
+    unitSelect.disabled = true;   // unit is fixed to the existing ingredient
     document.getElementById('item-quantity').value = item.quantity;
     document.getElementById('item-expiry').value = item.expiry_date || '';
+    ingredientHint.textContent = '';
     hideModalAlert();
     itemModal.show();
   }
@@ -277,13 +319,35 @@
     e.preventDefault();
     hideModalAlert();
 
-    const editId = document.getElementById('edit-id').value;
-    const ingredientId = document.getElementById('ingredient-id').value;
-    const quantity = document.getElementById('item-quantity').value;
-    const expiryDate = document.getElementById('item-expiry').value;
+    const editId      = document.getElementById('edit-id').value;
+    let   ingredientId = document.getElementById('ingredient-id').value;
+    const name        = document.getElementById('ingredient-search').value.trim();
+    const unit        = document.getElementById('item-unit').value;
+    const quantity    = document.getElementById('item-quantity').value;
+    const expiryDate  = document.getElementById('item-expiry').value;
 
-    if (!ingredientId) { showModalAlert('Please select an ingredient from the list.'); return; }
-    if (!quantity)      { showModalAlert('Please enter a quantity.'); return; }
+    if (!name)     { showModalAlert('Please enter an ingredient name.'); return; }
+    if (!unit)     { showModalAlert('Please select a unit.'); return; }
+    if (!quantity) { showModalAlert('Please enter a quantity.'); return; }
+    if (parseFloat(quantity) <= 0) { showModalAlert('Quantity must be a positive number.'); return; }
+
+    // If no existing ingredient was selected, create or retrieve one by name+unit
+    if (!ingredientId) {
+      const ingResp = await fetch(INGREDIENTS_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ name, unit }),
+      });
+      if (!ingResp.ok) {
+        const err = await ingResp.json();
+        // If ingredient already exists with a different unit, surface the error
+        showModalAlert(Object.values(err).flat().join(' '));
+        return;
+      }
+      const ing = await ingResp.json();
+      ingredientId = ing.id;
+    }
 
     const payload = { ingredient_id: parseInt(ingredientId), quantity: parseFloat(quantity) };
     if (expiryDate) payload.expiry_date = expiryDate;

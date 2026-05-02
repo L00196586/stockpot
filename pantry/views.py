@@ -64,3 +64,8 @@ class PantryPageView(TemplateView):
     My Stock dashboard HTML page.
     """
     template_name = "pantry/stock.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["unit_choices"] = Ingredient.Unit.choices
+        return ctx
