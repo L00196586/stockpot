@@ -6,6 +6,17 @@ SPOONACULAR_BASE_URL = "https://api.spoonacular.com"
 TIMEOUT = 10
 # Nutrients surfaced on the recipe detail page.
 KEY_NUTRIENTS = {"Calories", "Fat", "Carbohydrates", "Protein", "Fiber", "Sugar", "Sodium"}
+# Maps UserProfile dietary_preference keys to Spoonacular API parameters.
+SPOONACULAR_DIET_MAP = {
+    "vegetarian": "vegetarian",
+    "vegan": "vegan",
+    "keto": "ketogenic",
+}
+SPOONACULAR_INTOLERANCE_MAP = {
+    "gluten_free": "gluten",
+    "dairy_free": "dairy",
+    "nut_free": "tree nut,peanut",
+}
 
 
 class SpoonacularError(Exception):
@@ -17,13 +28,47 @@ class SpoonacularError(Exception):
         self.status_code = status_code
 
 
-def find_recipes_by_ingredients(ingredient_names: list[str], number: int = 12) -> list[dict]:
+def _build_diet_params(diets: list[str]) -> dict:
     """
-    Request to Spoonacular /recipes/findByIngredients endpoint.
+    Convert a list of UserProfile dietary preference keys into Spoonacular
+    request parameters for the complexSearch endpoint.
+
+    Returns a dict with zero or more of: {"diet": "...", "intolerances": "..."}.
+    """
+    diet_values = sorted({
+        SPOONACULAR_DIET_MAP[d]
+        for d in diets if d in SPOONACULAR_DIET_MAP
+    })
+    intolerance_values = sorted({
+        v.strip()
+        for d in diets if d in SPOONACULAR_INTOLERANCE_MAP
+        for v in SPOONACULAR_INTOLERANCE_MAP[d].split(",")
+    })
+    params = {}
+    if diet_values:
+        params["diet"] = ",".join(diet_values)
+    if intolerance_values:
+        params["intolerances"] = ",".join(intolerance_values)
+    return params
+
+
+def find_recipes_by_ingredients(
+    ingredient_names: list[str],
+    number: int = 12,
+    diets: list[str] | None = None,
+) -> list[dict]:
+    """
+    Request to Spoonacular API for recipes suggested by the provided ingredient names and optional dietary filters.
+
+    When `diets` is empty or None, uses Spoonacular /recipes/findByIngredients.
+    When `diets` is provided, switches to /recipes/complexSearch with
+    `fillIngredients=true` so the same used/missed ingredient counts are returned.
 
     Args:
-        ingredient_names    - List of ingredient name strings from the user's pantry.
-        number              - Maximum number of recipes to return (defaults to 12).
+        ingredient_names  - List of ingredient name strings from the user's pantry.
+        number            - Maximum number of recipes to return (defaults to 12).
+        diets             - Optional list of UserProfile dietary preference keys
+                            (e.g. ["vegan", "gluten_free"]).
 
     Returns a list of recipe dicts, each containing:
             id, title, image, used_count, missed_count,
@@ -36,18 +81,30 @@ def find_recipes_by_ingredients(ingredient_names: list[str], number: int = 12) -
     if not api_key:
         raise SpoonacularError("Spoonacular API key is not configured. Set SPOONACULAR_API_KEY in your environment.")
 
+    use_complex_search = bool(diets)
+
+    if use_complex_search:
+        url = f"{SPOONACULAR_BASE_URL}/recipes/complexSearch"
+        params = {
+            "includeIngredients": ",".join(ingredient_names),
+            "fillIngredients": True,
+            "number": number,
+            "ranking": 1,       # Spoonacular option to maximise used ingredients
+            "apiKey": api_key,
+            **_build_diet_params(diets),
+        }
+    else:
+        url = f"{SPOONACULAR_BASE_URL}/recipes/findByIngredients"
+        params = {
+            "ingredients": ",".join(ingredient_names),
+            "number": number,
+            "ranking": 1,       # Spoonacular option to maximise used ingredients
+            "ignorePantry": True,
+            "apiKey": api_key,
+        }
+
     try:
-        response = requests.get(
-            f"{SPOONACULAR_BASE_URL}/recipes/findByIngredients",
-            params={
-                "ingredients": ",".join(ingredient_names),
-                "number": number,
-                "ranking": 1,       # Spoonacular option to maximise used ingredients
-                "ignorePantry": True,
-                "apiKey": api_key,
-            },
-            timeout=TIMEOUT,
-        )
+        response = requests.get(url, params=params, timeout=TIMEOUT)
     except requests.exceptions.Timeout:
         raise SpoonacularError("The recipe service timed out. Please try again.")
     except requests.exceptions.RequestException as e:
@@ -63,6 +120,8 @@ def find_recipes_by_ingredients(ingredient_names: list[str], number: int = 12) -
         )
 
     raw = response.json()
+    # complexSearch wraps results, findByIngredients returns a bare list.
+    items = raw.get("results", raw) if isinstance(raw, dict) else raw
 
     return [
         {
@@ -74,7 +133,7 @@ def find_recipes_by_ingredients(ingredient_names: list[str], number: int = 12) -
             "used_ingredients": [i["name"] for i in item.get("usedIngredients", [])],
             "missed_ingredients": [i["name"] for i in item.get("missedIngredients", [])],
         }
-        for item in raw
+        for item in items
     ]
 
 
