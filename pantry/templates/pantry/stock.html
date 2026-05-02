@@ -81,7 +81,7 @@
 
           <div class="mb-3">
             <label for="ingredient-search" class="form-label">Ingredient name</label>
-            <input type="text" class="form-control" id="ingredient-search" placeholder="Type to search or add new…" autocomplete="off" required>
+            <input type="text" class="form-control" id="ingredient-search" placeholder="Type to search or add new..." autocomplete="off" required>
             <div id="ingredient-suggestions" class="list-group mt-1 position-absolute w-100" style="z-index:1055; max-height:200px; overflow-y:auto;"></div>
             <div class="form-text" id="ingredient-hint"></div>
           </div>
@@ -89,7 +89,7 @@
           <div class="mb-3">
             <label for="item-unit" class="form-label">Unit</label>
             <select class="form-select" id="item-unit" required>
-              <option value="" disabled selected>Select unit…</option>
+              <option value="" disabled selected>Select unit...</option>
               {% for value, label in unit_choices %}
               <option value="{{ value }}">{{ label }}</option>
               {% endfor %}

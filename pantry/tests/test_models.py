@@ -1,10 +1,11 @@
 import datetime
+import time
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.test import TestCase
 
-from pantry.models import Ingredient, StockItem
+from pantry.models import Ingredient, StockItem, SavedRecipe
 
 
 class IngredientModelTest(TestCase):
@@ -101,3 +102,35 @@ class StockItemModelTest(TestCase):
             )
         )
         self.assertEqual(names, ["Apple", "Flour"])
+
+
+class SavedRecipeModelTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", password="pass")
+        self.other_user = User.objects.create_user(username="other", password="pass")
+
+    def test_str_representation(self):
+        saved = SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
+        self.assertEqual(str(saved), "testuser – Pancakes")
+
+    def test_unique_together_prevents_duplicated_user_recipe(self):
+        SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
+        with self.assertRaises(IntegrityError):
+            SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes again")
+
+    def test_two_users_can_save_same_recipe(self):
+        SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
+        saved = SavedRecipe.objects.create(user=self.other_user, recipe_id=42, title="Pancakes")
+        self.assertEqual(saved.recipe_id, 42)
+
+    def test_image_defaults_to_empty_string(self):
+        saved = SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
+        self.assertEqual(saved.image, "")
+
+    def test_ordering_is_newest_first(self):
+        SavedRecipe.objects.create(user=self.user, recipe_id=1, title="First")
+        time.sleep(0.01)
+        newest = SavedRecipe.objects.create(user=self.user, recipe_id=2, title="Second")
+        qs = list(SavedRecipe.objects.filter(user=self.user))
+        self.assertEqual(qs[0].pk, newest.pk)

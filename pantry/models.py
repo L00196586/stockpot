@@ -37,3 +37,18 @@ class StockItem(models.Model):
 
     def __str__(self):
         return f"{self.user.username} – {self.ingredient.name}: {self.quantity}{self.ingredient.unit}"
+
+
+class SavedRecipe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_recipes")
+    recipe_id = models.IntegerField()
+    title = models.CharField(max_length=500)
+    image = models.URLField(blank=True, default="")
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "recipe_id")
+        ordering = ["-saved_at"]
+
+    def __str__(self):
+        return f"{self.user.username} – {self.title}"
