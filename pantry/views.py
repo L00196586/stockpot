@@ -133,3 +133,16 @@ class RecipeDetailView(APIView):
             return Response({"detail": str(e)}, status=http_status)
 
         return Response(details, status=status.HTTP_200_OK)
+
+
+class RecipeDetailPageView(TemplateView):
+    """
+    GET /recipes/<recipe_id>/
+    Recipe detail HTML page.
+    """
+    template_name = "pantry/recipe_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["recipe_id"] = kwargs.get("recipe_id")
+        return context
