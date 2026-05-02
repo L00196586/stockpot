@@ -116,4 +116,3 @@ class ProfileView(APIView):
         if serializer.validated_data.get("new_password"):
             update_session_auth_hash(request, user)
         return Response({"email": user.email}, status=status.HTTP_200_OK)
-

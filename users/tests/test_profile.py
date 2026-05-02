@@ -175,4 +175,3 @@ class ProfilePatchPasswordTests(TestCase):
         self._patch({"new_password": "NewPassword2@", "new_password2": "NewPassword2@"})
         profile_res = self.client.get(self.url)
         self.assertEqual(profile_res.status_code, status.HTTP_200_OK)
-

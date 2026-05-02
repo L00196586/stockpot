@@ -125,4 +125,3 @@ class ProfileSerializer(serializers.Serializer):
             instance.profile.dietary_preferences = validated_data["dietary_preferences"]
             instance.profile.save()
         return instance
-
