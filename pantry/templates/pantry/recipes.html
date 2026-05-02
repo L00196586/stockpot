@@ -7,25 +7,20 @@
 
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="fw-bold mb-0">Recipe Suggestions</h4>
-    <button class="btn btn-primary" id="btn-find-recipes">
-      Find Recipes
-    </button>
+    <button class="btn btn-primary" id="btn-find-recipes">Find Recipes</button>
   </div>
 
   <div id="alert-area"></div>
 
-  <!-- Loading spinner -->
   <div id="loading" class="text-center py-5 d-none">
     <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading…</span>
+      <span class="visually-hidden">Loading...</span>
     </div>
-    <p class="text-muted mt-2">Searching for recipes…</p>
+    <p class="text-muted mt-2">Searching for recipes...</p>
   </div>
 
-  <!-- Recipe cards -->
   <div class="row g-4" id="recipe-grid"></div>
 
-  <!-- Empty state -->
   <div id="empty-state" class="text-center text-muted py-5 d-none">
     <p class="mb-1">No recipes found for your current pantry.</p>
     <p class="small">Try adding more ingredients to get better suggestions.</p>
@@ -36,8 +31,48 @@
 
 {% block extra_js %}
 <script>
-  const MATCH_URL = '/api/recipes/match/';
-  const DETAILS_URL = '/recipes/';
+  const MATCH_URL      = '/api/recipes/match/';
+  const DETAILS_URL    = '/recipes/';
+  const FAVOURITES_URL = '/api/favourites/';
+
+  let savedIds = new Set();
+
+  async function loadFavouriteIds() {
+    try {
+      const resp = await fetch(FAVOURITES_URL, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      (data.results ?? data).forEach(f => savedIds.add(f.recipe_id));
+    } catch { /* TODO: Handle this case */ }
+  }
+
+  async function toggleFavourite(r, btn) {
+    const isSaved = savedIds.has(r.id);
+    if (isSaved) {
+      const resp = await fetch(`${FAVOURITES_URL}${r.id}/`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': getCsrf() },
+      });
+      if (resp.ok || resp.status === 204) {
+        savedIds.delete(r.id);
+        btn.textContent = '\u2661 Save';
+        btn.classList.replace('btn-warning', 'btn-outline-warning');
+      }
+    } else {
+      const resp = await fetch(FAVOURITES_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ recipe_id: r.id, title: r.title, image: r.image }),
+      });
+      if (resp.ok || resp.status === 201) {
+        savedIds.add(r.id);
+        btn.textContent = '\u2665 Saved';
+        btn.classList.replace('btn-outline-warning', 'btn-warning');
+      }
+    }
+  }
 
   function showAlert(msg, type = 'danger') {
     document.getElementById('alert-area').innerHTML =
@@ -47,9 +82,7 @@
        </div>`;
   }
 
-  function clearAlert() {
-    document.getElementById('alert-area').innerHTML = '';
-  }
+  function clearAlert() { document.getElementById('alert-area').innerHTML = ''; }
 
   function setLoading(on) {
     document.getElementById('loading').classList.toggle('d-none', !on);
@@ -68,41 +101,38 @@
     empty.classList.add('d-none');
 
     recipes.forEach(r => {
-      const detailUrl  = `${DETAILS_URL}${r.id}/`;
-      const usedBadge  = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
-      const missBadge  = r.missed_count
-        ? `<span class="badge bg-secondary">${r.missed_count} missing</span>`
-        : '';
-      const usedList   = r.used_ingredients.length
-        ? `<p class="small text-muted mb-1"><strong>Have:</strong> ${r.used_ingredients.join(', ')}</p>`
-        : '';
-      const missList   = r.missed_ingredients.length
-        ? `<p class="small text-muted mb-0"><strong>Missing:</strong> ${r.missed_ingredients.join(', ')}</p>`
-        : '';
-      const imgHtml    = r.image
+      const detailUrl = `${DETAILS_URL}${r.id}/`;
+      const isSaved = savedIds.has(r.id);
+      const favouriteLabel = isSaved ? '\u2665 Saved' : '\u2661 Save';
+      const favouriteClass = isSaved ? 'btn-warning' : 'btn-outline-warning';
+      const usedBadge = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
+      const missBadge = r.missed_count ? `<span class="badge bg-secondary">${r.missed_count} missing</span>` : '';
+      const usedList  = r.used_ingredients.length
+        ? `<p class="small text-muted mb-1"><strong>Have:</strong> ${r.used_ingredients.join(', ')}</p>` : '';
+      const missList  = r.missed_ingredients.length
+        ? `<p class="small text-muted mb-0"><strong>Missing:</strong> ${r.missed_ingredients.join(', ')}</p>` : '';
+      const imgHtml   = r.image
         ? `<img src="${r.image}" class="card-img-top" alt="${r.title}" style="height:180px;object-fit:cover;">`
-        : `<div class="bg-light d-flex align-items-center justify-content-center" style="height:180px;">
-             <span class="text-muted">No image</span>
-           </div>`;
+        : `<div class="bg-light d-flex align-items-center justify-content-center" style="height:180px;"><span class="text-muted">No image</span></div>`;
 
       const col = document.createElement('div');
       col.className = 'col-sm-6 col-lg-4';
       col.innerHTML = `
         <div class="card h-100 shadow-sm">
-          <a href="${detailUrl}" class="text-decoration-none text-dark">
-            ${imgHtml}
-          </a>
+          <a href="${detailUrl}" class="text-decoration-none text-dark">${imgHtml}</a>
           <div class="card-body d-flex flex-column">
             <h6 class="card-title fw-semibold mb-2">
               <a href="${detailUrl}" class="text-decoration-none text-dark">${r.title}</a>
             </h6>
             <div class="mb-2">${usedBadge}${missBadge}</div>
             ${usedList}${missList}
-            <div class="mt-auto pt-2">
-              <a href="${detailUrl}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
+            <div class="mt-auto pt-2 d-flex gap-2">
+              <a href="${detailUrl}" class="btn btn-sm btn-outline-primary flex-grow-1">View Recipe</a>
+              <button class="btn btn-sm ${favouriteClass} fav-btn">${favouriteLabel}</button>
             </div>
           </div>
         </div>`;
+      col.querySelector('.fav-btn').addEventListener('click', () => toggleFavourite(r, col.querySelector('.fav-btn')));
       grid.appendChild(col);
     });
   }
@@ -112,24 +142,14 @@
     setLoading(true);
     document.getElementById('recipe-grid').innerHTML = '';
     document.getElementById('empty-state').classList.add('d-none');
-
     try {
       const resp = await fetch(MATCH_URL, { credentials: 'same-origin' });
       const data = await resp.json();
-
       if (!resp.ok) {
-        const msg = data.detail || 'An error occurred while fetching recipes.';
-        const type = resp.status === 429 ? 'warning' : 'danger';
-        showAlert(msg, type);
+        showAlert(data.detail || 'An error occurred while fetching recipes.', resp.status === 429 ? 'warning' : 'danger');
         return;
       }
-
-      // Handle pantry-empty message returned as 200
-      if (data.detail) {
-        showAlert(data.detail, 'info');
-        return;
-      }
-
+      if (data.detail) { showAlert(data.detail, 'info'); return; }
       renderRecipes(data);
     } catch {
       showAlert('Could not reach the recipe service. Please check your connection and try again.');
@@ -141,10 +161,11 @@
   document.getElementById('logout-link').addEventListener('click', e => {
     e.preventDefault();
     fetch('/api/auth/logout/', {
-      method: 'POST',
-      credentials: 'same-origin',
+      method: 'POST', credentials: 'same-origin',
       headers: { 'X-CSRFToken': getCsrf() },
     }).then(() => { window.location.href = '/login/'; });
   });
+
+  loadFavouriteIds();
 </script>
 {% endblock %}
