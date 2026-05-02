@@ -21,7 +21,7 @@
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmkmIkWVfvTj7VRThXyPs2hDObQD"
         crossorigin="anonymous"></script>
 <script>
-  // Available to all pages — reads from rendered {% csrf_token %} first, falls back to cookie.
+  // Available to all pages. Reads from rendered {% csrf_token %} first, falls back to cookie.
   function getCsrf() {
     const token = document.querySelector('[name=csrfmiddlewaretoken]');
     if (token) return token.value;
