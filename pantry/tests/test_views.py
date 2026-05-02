@@ -429,6 +429,38 @@ class RecipeMatchViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
 
+    @patch("pantry.views.find_recipes_by_ingredients")
+    def test_diets_query_param_pass_to_service(self, mock_service):
+        mock_service.return_value = [self.expected_recipe]
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+
+        response = self.client.get(self.url, {"diets": "vegan,gluten_free"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        _, kwargs = mock_service.call_args
+        self.assertIn("vegan", kwargs["diets"])
+        self.assertIn("gluten_free", kwargs["diets"])
+
+    @patch("pantry.views.find_recipes_by_ingredients")
+    def test_when_diets_param_absent_passes_none(self, mock_service):
+        mock_service.return_value = []
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+
+        self.client.get(self.url)
+
+        _, kwargs = mock_service.call_args
+        self.assertIsNone(kwargs["diets"])
+
+    @patch("pantry.views.find_recipes_by_ingredients")
+    def test_when_diets_param_is_empty_string_passes_none(self, mock_service):
+        mock_service.return_value = []
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+
+        self.client.get(self.url, {"diets": ""})
+
+        _, kwargs = mock_service.call_args
+        self.assertIsNone(kwargs["diets"])
+
 
 class RecipeSuggestionsPageViewTest(TestCase):
 
@@ -441,6 +473,12 @@ class RecipeSuggestionsPageViewTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "pantry/recipes.html")
+
+    def test_context_includes_dietary_choices(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertIn("dietary_choices", response.context)
+        self.assertGreater(len(response.context["dietary_choices"]), 0)
 
 
 class PantryPageViewTest(TestCase):
