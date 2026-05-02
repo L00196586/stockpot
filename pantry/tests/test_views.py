@@ -561,7 +561,10 @@ class FavouriteListCreateViewTest(APITestCase):
 
     def test_create_requires_authentication(self):
         self.client.force_authenticate(user=None)
-        self.assertEqual(self.client.post(self.url, self.valid_payload, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.post(self.url, self.valid_payload, format="json").status_code,
+            status.HTTP_403_FORBIDDEN
+        )
 
     # Listing
 
