@@ -162,7 +162,8 @@ class FavouriteListCreateView(generics.ListCreateAPIView):
 
 class FavouriteDeleteView(generics.DestroyAPIView):
     """
-    DELETE /api/favourites/<recipe_id>/ — Remove a recipe from favourites by Spoonacular recipe ID.
+    DELETE /api/favourites/<recipe_id>/
+    Remove a recipe from favourites by Spoonacular recipe ID.
     """
     permission_classes = [IsAuthenticated]
 

@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 from unittest.mock import patch
-from pantry.models import Ingredient, StockItem
+from pantry.models import Ingredient, StockItem, SavedRecipe
 from pantry.services import SpoonacularError
 
 
@@ -542,3 +542,115 @@ class RecipeDetailPageViewTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.context["recipe_id"], self.recipe_id)
+
+
+class FavouriteListCreateViewTest(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse("favourite-list-create")
+        self.valid_payload = {"recipe_id": 42, "title": "Pancakes", "image": "https://example.com/img.jpg"}
+
+    # Authentication
+
+    def test_list_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.post(self.url, self.valid_payload, format="json").status_code, status.HTTP_403_FORBIDDEN)
+
+    # Listing
+
+    def test_list_returns_only_logged_users_favourites(self):
+        SavedRecipe.objects.create(user=self.user, recipe_id=1, title="A")
+        SavedRecipe.objects.create(user=self.other_user, recipe_id=2, title="B")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["recipe_id"], 1)
+
+    def test_list_returns_empty_for_user_with_no_favourites(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 0)
+
+    # Create
+
+    def test_create_returns_201(self):
+        response = self.client.post(self.url, self.valid_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_persists_to_database(self):
+        self.client.post(self.url, self.valid_payload, format="json")
+        self.assertTrue(SavedRecipe.objects.filter(user=self.user, recipe_id=42).exists())
+
+    def test_create_is_done_with_requesting_user(self):
+        self.client.post(self.url, self.valid_payload, format="json")
+        saved = SavedRecipe.objects.get(recipe_id=42)
+        self.assertEqual(saved.user, self.user)
+
+    def test_create_response_contains_expected_fields(self):
+        response = self.client.post(self.url, self.valid_payload, format="json")
+        self.assertIn("id", response.data)
+        self.assertIn("recipe_id", response.data)
+        self.assertIn("title", response.data)
+        self.assertIn("saved_at", response.data)
+
+    def test_create_duplicate_recipe_returns_400(self):
+        self.client.post(self.url, self.valid_payload, format="json")
+        response = self.client.post(self.url, self.valid_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_two_users_can_save_the_same_recipe(self):
+        self.client.post(self.url, self.valid_payload, format="json")
+        self.client.force_authenticate(user=self.other_user)
+        response = self.client.post(self.url, self.valid_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+
+class FavouriteDeleteViewTest(APITestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
+        self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
+        self.client.force_authenticate(user=self.user)
+        self.saved = SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
+        self.url = reverse("favourite-delete", args=[42])
+
+    def test_delete_requires_authentication(self):
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.delete(self.url).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_removes_favourite_and_returns_204(self):
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(SavedRecipe.objects.filter(user=self.user, recipe_id=42).exists())
+
+    def test_delete_other_users_favourite_returns_404(self):
+        other_saved = SavedRecipe.objects.create(user=self.other_user, recipe_id=99, title="Other")
+        response = self.client.delete(reverse("favourite-delete", args=[99]))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(SavedRecipe.objects.filter(pk=other_saved.pk).exists())
+
+    def test_delete_nonexistent_recipe_returns_404(self):
+        response = self.client.delete(reverse("favourite-delete", args=[99999]))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class FavouritesPageViewTest(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="chef", password="pass")
+        self.url = reverse("favourites-page")
+
+    def test_renders_favourites_template(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "pantry/favourites.html")
