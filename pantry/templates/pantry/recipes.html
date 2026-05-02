@@ -37,6 +37,7 @@
 {% block extra_js %}
 <script>
   const MATCH_URL = '/api/recipes/match/';
+  const DETAILS_URL = '/recipes/';
 
   function showAlert(msg, type = 'danger') {
     document.getElementById('alert-area').innerHTML =
@@ -67,7 +68,7 @@
     empty.classList.add('d-none');
 
     recipes.forEach(r => {
-      const detailUrl  = `/recipes/${r.id}/`;
+      const detailUrl  = `${DETAILS_URL}${r.id}/`;
       const usedBadge  = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
       const missBadge  = r.missed_count
         ? `<span class="badge bg-secondary">${r.missed_count} missing</span>`
