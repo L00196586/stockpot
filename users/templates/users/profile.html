@@ -1,32 +1,29 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Profile – StockPot</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-        crossorigin="anonymous">
-</head>
-<body>
+{% extends 'base.html' %}
 
+{% block title %}Profile – StockPot{% endblock %}
+
+{% block page_heading %}
 <h1 class="px-4 pt-4 fw-bold fs-2">Profile</h1>
+{% endblock %}
 
+{% block navbar %}
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4">
-  <a class="navbar-brand fw-bold" href="#">StockPot</a>
+  <a class="navbar-brand fw-bold" href="/dashboard/">StockPot</a>
   <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
     <span class="navbar-toggler-icon"></span>
   </button>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav ms-auto">
-      <li class="nav-item">
-        <a class="nav-link" href="#" id="logout-link">Log out</a>
-      </li>
+      <li class="nav-item"><a class="nav-link" href="/dashboard/">Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="/pantry/">Pantry</a></li>
+      <li class="nav-item"><a class="nav-link active" href="/profile/">Profile</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" id="logout-link">Log out</a></li>
     </ul>
   </div>
 </nav>
+{% endblock %}
 
+{% block content %}
 <div class="container py-5">
   <div class="mx-auto" style="max-width: 680px;">
 
@@ -41,30 +38,26 @@
         <form id="profile-form">
           {% csrf_token %}
 
-          <!-- Email -->
           <div class="mb-3">
             <label for="email" class="form-label">Email</label>
             <input type="text" class="form-control" id="email" name="email">
           </div>
 
-          <!-- Password -->
           <div class="mb-3">
             <label for="new_password" class="form-label">Password</label>
             <small class="d-block text-muted mb-1">Leave blank if not changing.</small>
             <input type="password" class="form-control" id="new_password" name="new_password" autocomplete="new-password">
           </div>
 
-          <!-- Password Confirmation -->
           <div class="mb-3">
             <label for="new_password2" class="form-label">Password Confirmation</label>
             <input type="password" class="form-control" id="new_password2" name="new_password2" autocomplete="new-password">
           </div>
 
-          <!-- Dietary Preferences -->
           <div class="mb-4">
             <h6 class="fw-semibold">Dietary Preferences</h6>
             <small class="text-muted">This configuration will be used as your default filters but can be modified before searching.</small>
-            <div id="dietary-list" class="mt-2">
+            <div class="mt-2">
               {% for key, label in dietary_choices %}
               <div class="form-check">
                 <input class="form-check-input dietary-checkbox" type="checkbox" value="{{ key }}" id="diet-{{ key }}">
@@ -83,16 +76,11 @@
 
   </div>
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmkmIkWVfvTj7VRThXyPs2hDObQD"
-        crossorigin="anonymous"></script>
+{% block extra_js %}
 <script>
   const PROFILE_URL = '/api/auth/profile/';
-
-  function getCsrf() {
-    return document.querySelector('[name=csrfmiddlewaretoken]').value;
-  }
 
   function showAlert(msg, type = 'danger') {
     document.getElementById('alert-area').innerHTML =
@@ -102,7 +90,6 @@
        </div>`;
   }
 
-  // Load current profile data
   fetch(PROFILE_URL, { credentials: 'same-origin' })
     .then(r => r.json())
     .then(data => {
@@ -130,10 +117,7 @@
       document.querySelectorAll('.dietary-checkbox:checked')
     ).map(cb => cb.value);
 
-    const payload = {
-      email: document.getElementById('email').value.trim(),
-      dietary_preferences,
-    };
+    const payload = { email: document.getElementById('email').value.trim(), dietary_preferences };
 
     const newPw = document.getElementById('new_password').value;
     const newPw2 = document.getElementById('new_password2').value;
@@ -145,17 +129,13 @@
     fetch(PROFILE_URL, {
       method: 'PATCH',
       credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrf(),
-      },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
       body: JSON.stringify(payload),
     })
       .then(async r => {
         if (!r.ok) {
           const err = await r.json();
-          const msgs = Object.values(err).flat().join(' ');
-          showAlert(msgs);
+          showAlert(Object.values(err).flat().join(' '));
         } else {
           showAlert('Profile updated successfully.', 'success');
           document.getElementById('new_password').value = '';
@@ -165,5 +145,4 @@
       .catch(() => showAlert('An error occurred. Please try again.'));
   });
 </script>
-</body>
-</html>
+{% endblock %}
