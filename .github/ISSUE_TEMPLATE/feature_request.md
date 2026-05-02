@@ -19,10 +19,6 @@ assignees: ""
 
 <!-- Describe the behaviour you would like to see. Be as specific as possible. -->
 
-## Alternatives considered
-
-<!-- Have you considered any alternative approaches? Why did you rule them out? -->
-
 ## Acceptance criteria
 
 <!-- A checklist of conditions that must be true for this feature to be considered done. -->
@@ -33,4 +29,4 @@ assignees: ""
 
 ## Additional context
 
-<!-- Wireframes, links to related issues, external API docs, or any other relevant information. -->
+<!-- Optional: Wireframes, links to related issues, external API docs, or any other relevant information. -->
