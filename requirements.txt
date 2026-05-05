@@ -4,3 +4,4 @@ psycopg2-binary==2.9.12
 gunicorn==25.3.0
 python-decouple==3.8
 requests==2.33.1
+dj-database-url==3.1.0
