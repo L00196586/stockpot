@@ -47,7 +47,6 @@ class StockItemModelTest(TestCase):
 
     def test_all_unit_choices_are_valid(self):
         valid_units = ["g", "kg", "ml", "L", "pcs", "tbsp", "tsp", "cup"]
-        ingredient2 = Ingredient.objects.create(name="Water")
         for i, unit in enumerate(valid_units):
             ing = Ingredient.objects.create(name=f"Ingredient {i}")
             stock = StockItem.objects.create(user=self.user, ingredient=ing, quantity=1, unit=unit)
