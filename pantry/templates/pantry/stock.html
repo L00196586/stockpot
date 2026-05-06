@@ -198,7 +198,7 @@
           <td>${statusBadge(item.expiry_date)}</td>
           <td>${item.ingredient.name}</td>
           <td>${item.quantity}</td>
-          <td>${item.ingredient.unit}</td>
+          <td>${item.unit}</td>
           <td>${formatDate(item.expiry_date)}</td>
           <td>
             <button class="btn btn-outline-secondary btn-sm me-1" onclick="openEdit(${item.id})">Edit</button>
@@ -257,14 +257,10 @@
     const a = document.createElement('button');
     a.type = 'button';
     a.className = 'list-group-item list-group-item-action';
-    a.textContent = `${ing.name} (${ing.unit})`;
+    a.textContent = ing.name;
     a.addEventListener('click', () => {
       document.getElementById('ingredient-id').value = ing.id;
       searchInput.value = ing.name;
-      // Lock unit to the existing ingredient's unit
-      const unitSelect = document.getElementById('item-unit');
-      unitSelect.value = ing.unit;
-      unitSelect.disabled = true;
       suggestionsBox.innerHTML = '';
       ingredientHint.textContent = '';
     });
@@ -277,21 +273,12 @@
     }
   });
 
-  // Re-enable unit when user clears the ingredient field
-  searchInput.addEventListener('change', () => {
-    if (!document.getElementById('ingredient-id').value) {
-      document.getElementById('item-unit').disabled = false;
-    }
-  });
-
   document.getElementById('btn-add-item').addEventListener('click', () => {
     document.getElementById('itemModalLabel').textContent = 'Add Item';
     document.getElementById('edit-id').value = '';
     document.getElementById('ingredient-search').value = '';
     document.getElementById('ingredient-id').value = '';
-    const unitSelect = document.getElementById('item-unit');
-    unitSelect.value = '';
-    unitSelect.disabled = false;
+    document.getElementById('item-unit').value = '';
     document.getElementById('item-quantity').value = '';
     document.getElementById('item-expiry').value = '';
     ingredientHint.textContent = '';
@@ -305,9 +292,7 @@
     document.getElementById('edit-id').value = item.id;
     document.getElementById('ingredient-search').value = item.ingredient.name;
     document.getElementById('ingredient-id').value = item.ingredient.id;
-    const unitSelect = document.getElementById('item-unit');
-    unitSelect.value = item.ingredient.unit;
-    unitSelect.disabled = true;   // unit is fixed to the existing ingredient
+    document.getElementById('item-unit').value = item.unit;
     document.getElementById('item-quantity').value = item.quantity;
     document.getElementById('item-expiry').value = item.expiry_date || '';
     ingredientHint.textContent = '';
@@ -319,29 +304,28 @@
     e.preventDefault();
     hideModalAlert();
 
-    const editId      = document.getElementById('edit-id').value;
+    const editId       = document.getElementById('edit-id').value;
     let   ingredientId = document.getElementById('ingredient-id').value;
-    const name        = document.getElementById('ingredient-search').value.trim();
-    const unit        = document.getElementById('item-unit').value;
-    const quantity    = document.getElementById('item-quantity').value;
-    const expiryDate  = document.getElementById('item-expiry').value;
+    const name         = document.getElementById('ingredient-search').value.trim();
+    const unit         = document.getElementById('item-unit').value;
+    const quantity     = document.getElementById('item-quantity').value;
+    const expiryDate   = document.getElementById('item-expiry').value;
 
     if (!name)     { showModalAlert('Please enter an ingredient name.'); return; }
     if (!unit)     { showModalAlert('Please select a unit.'); return; }
     if (!quantity) { showModalAlert('Please enter a quantity.'); return; }
     if (parseFloat(quantity) <= 0) { showModalAlert('Quantity must be a positive number.'); return; }
 
-    // If no existing ingredient was selected, create or retrieve one by name+unit
+    // If no existing ingredient was selected, create one by name
     if (!ingredientId) {
       const ingResp = await fetch(INGREDIENTS_URL, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
-        body: JSON.stringify({ name, unit }),
+        body: JSON.stringify({ name }),
       });
       if (!ingResp.ok) {
         const err = await ingResp.json();
-        // If ingredient already exists with a different unit, surface the error
         showModalAlert(Object.values(err).flat().join(' '));
         return;
       }
@@ -349,7 +333,11 @@
       ingredientId = ing.id;
     }
 
-    const payload = { ingredient_id: parseInt(ingredientId), quantity: parseFloat(quantity) };
+    const payload = {
+      ingredient_id: parseInt(ingredientId),
+      unit,
+      quantity: parseFloat(quantity),
+    };
     if (expiryDate) payload.expiry_date = expiryDate;
 
     const url    = editId ? `${STOCK_URL}${editId}/` : STOCK_URL;
