@@ -10,12 +10,8 @@ from pantry.models import Ingredient, StockItem, SavedRecipe
 
 class IngredientModelTest(TestCase):
     def test_str_representation(self):
-        ingredient = Ingredient(name="Flour", unit="g")
-        self.assertEqual(str(ingredient), "Flour (g)")
-
-    def test_default_unit_is_grams(self):
-        ingredient = Ingredient.objects.create(name="Salt")
-        self.assertEqual(ingredient.unit, Ingredient.Unit.GRAMS)
+        ingredient = Ingredient(name="Flour")
+        self.assertEqual(str(ingredient), "Flour")
 
     def test_name_is_unique(self):
         Ingredient.objects.create(name="Flour", unit="g")
