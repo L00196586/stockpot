@@ -48,3 +48,8 @@ jobs:
             ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
             CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }}
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+
+      - name: Run Migrations
+        run: |-
+          gcloud run services proxy stockpot-staging --region us-central1 -- \
+          python manage.py migrate --noinput
