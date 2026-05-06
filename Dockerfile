@@ -17,4 +17,6 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["gunicorn", "stockpot.wsgi:application", "--bind", ":8080"]
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
