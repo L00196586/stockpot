@@ -13,8 +13,8 @@ class IngredientListCreateViewTest(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="pass")
         self.client.force_authenticate(user=self.user)
-        self.flour = Ingredient.objects.create(name="Flour", unit="g")
-        self.milk = Ingredient.objects.create(name="Milk", unit="L")
+        self.flour = Ingredient.objects.create(name="Flour")
+        self.milk = Ingredient.objects.create(name="Milk")
         self.url = reverse("ingredient-list-create")
 
     # Authentication
@@ -26,7 +26,7 @@ class IngredientListCreateViewTest(APITestCase):
 
     def test_create_requires_authentication(self):
         self.client.force_authenticate(user=None)
-        response = self.client.post(self.url, {"name": "Butter", "unit": "g"}, format="json")
+        response = self.client.post(self.url, {"name": "Butter"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # List
@@ -57,37 +57,24 @@ class IngredientListCreateViewTest(APITestCase):
     # Create
 
     def test_create_ingredient_returns_201(self):
-        response = self.client.post(self.url, {"name": "Eggs", "unit": "pcs"}, format="json")
+        response = self.client.post(self.url, {"name": "Eggs"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_ingredient_persists_to_database(self):
-        self.client.post(self.url, {"name": "Eggs", "unit": "pcs"}, format="json")
+        self.client.post(self.url, {"name": "Eggs"}, format="json")
         self.assertTrue(Ingredient.objects.filter(name="Eggs").exists())
 
-    def test_create_ingredient_response_contains_id_name_unit(self):
-        response = self.client.post(self.url, {"name": "Eggs", "unit": "pcs"}, format="json")
-        self.assertEqual(set(response.data.keys()), {"id", "name", "unit"})
+    def test_create_ingredient_response_contains_id_name(self):
+        response = self.client.post(self.url, {"name": "Eggs"}, format="json")
+        self.assertEqual(set(response.data.keys()), {"id", "name"})
         self.assertEqual(response.data["name"], "Eggs")
-        self.assertEqual(response.data["unit"], "pcs")
-
-    def test_create_ingredient_defaults_unit_to_grams(self):
-        response = self.client.post(self.url, {"name": "Salt"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["unit"], "g")
-
-    def test_create_ingredient_rejects_invalid_unit(self):
-        response = self.client.post(
-            self.url, {"name": "Mystery", "unit": "xyz"}, format="json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("unit", response.data)
 
     def test_create_ingredient_rejects_duplicate_name(self):
-        response = self.client.post(self.url, {"name": "Flour", "unit": "kg"}, format="json")
+        response = self.client.post(self.url, {"name": "Flour"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_ingredient_rejects_missing_name(self):
-        response = self.client.post(self.url, {"unit": "g"}, format="json")
+        response = self.client.post(self.url, {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -96,8 +83,8 @@ class StockItemListCreateViewTest(APITestCase):
         self.user = User.objects.create_user(username="user1", password="pass")
         self.other_user = User.objects.create_user(username="user2", password="pass")
         self.client.force_authenticate(user=self.user)
-        self.flour = Ingredient.objects.create(name="Flour", unit="g")
-        self.milk = Ingredient.objects.create(name="Milk", unit="L")
+        self.flour = Ingredient.objects.create(name="Flour")
+        self.milk = Ingredient.objects.create(name="Milk")
         self.url = reverse("stock-list-create")
 
     # Authentication
@@ -135,14 +122,15 @@ class StockItemListCreateViewTest(APITestCase):
         item = response.data["results"][0]
         self.assertIn("ingredient", item)
         self.assertEqual(item["ingredient"]["name"], "Flour")
-        self.assertEqual(item["ingredient"]["unit"], "g")
+        self.assertIn("unit", item)
+        self.assertNotIn("unit", item["ingredient"])
 
     # Create
 
     def test_create_stock_item_returns_201(self):
         response = self.client.post(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "500.00"},
+            {"ingredient_id": self.flour.pk, "unit": "g", "quantity": "500.00"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -150,27 +138,29 @@ class StockItemListCreateViewTest(APITestCase):
     def test_create_stock_item_is_scoped_to_requesting_user(self):
         self.client.post(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "500.00"},
+            {"ingredient_id": self.flour.pk, "unit": "g", "quantity": "500.00"},
             format="json",
         )
         stock = StockItem.objects.get(ingredient=self.flour)
         self.assertEqual(stock.user, self.user)
 
-    def test_create_stock_item_response_has_nested_ingredient(self):
+    def test_create_stock_item_response_has_nested_ingredient_and_unit_at_top_level(self):
         response = self.client.post(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "500.00"},
+            {"ingredient_id": self.flour.pk, "unit": "g", "quantity": "500.00"},
             format="json",
         )
         self.assertIn("ingredient", response.data)
         self.assertEqual(response.data["ingredient"]["name"], "Flour")
-        self.assertEqual(response.data["ingredient"]["unit"], "g")
+        self.assertEqual(response.data["unit"], "g")
+        self.assertNotIn("unit", response.data["ingredient"])
 
     def test_create_stock_item_with_expiry_date(self):
         response = self.client.post(
             self.url,
             {
                 "ingredient_id": self.flour.pk,
+                "unit": "g",
                 "quantity": "500.00",
                 "expiry_date": "2027-06-01",
             },
@@ -183,20 +173,20 @@ class StockItemListCreateViewTest(APITestCase):
         StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=100)
         response = self.client.post(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "200.00"},
+            {"ingredient_id": self.flour.pk, "unit": "g", "quantity": "200.00"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_invalid_ingredient_id_returns_400(self):
         response = self.client.post(
-            self.url, {"ingredient_id": 9999, "quantity": "100.00"}, format="json"
+            self.url, {"ingredient_id": 9999, "unit": "g", "quantity": "100.00"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_missing_quantity_returns_400(self):
         response = self.client.post(
-            self.url, {"ingredient_id": self.flour.pk}, format="json"
+            self.url, {"ingredient_id": self.flour.pk, "unit": "g"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -205,7 +195,7 @@ class StockItemListCreateViewTest(APITestCase):
         self.client.force_authenticate(user=self.other_user)
         response = self.client.post(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "300.00"},
+            {"ingredient_id": self.flour.pk, "unit": "kg", "quantity": "1.00"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -216,10 +206,10 @@ class StockItemDetailViewTest(APITestCase):
         self.user = User.objects.create_user(username="user1", password="pass")
         self.other_user = User.objects.create_user(username="user2", password="pass")
         self.client.force_authenticate(user=self.user)
-        self.flour = Ingredient.objects.create(name="Flour", unit="g")
-        self.milk = Ingredient.objects.create(name="Milk", unit="L")
+        self.flour = Ingredient.objects.create(name="Flour")
+        self.milk = Ingredient.objects.create(name="Milk")
         self.stock = StockItem.objects.create(
-            user=self.user, ingredient=self.flour, quantity=500
+            user=self.user, ingredient=self.flour, quantity=500, unit="g"
         )
         self.url = reverse("stock-detail", args=[self.stock.pk])
 
@@ -243,7 +233,7 @@ class StockItemDetailViewTest(APITestCase):
 
     def test_retrieve_other_users_item_returns_404(self):
         other_stock = StockItem.objects.create(
-            user=self.other_user, ingredient=self.milk, quantity=2
+            user=self.other_user, ingredient=self.milk, quantity=2, unit="L"
         )
         response = self.client.get(reverse("stock-detail", args=[other_stock.pk]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -255,6 +245,7 @@ class StockItemDetailViewTest(APITestCase):
             self.url,
             {
                 "ingredient_id": self.flour.pk,
+                "unit": "g",
                 "quantity": "999.00",
                 "expiry_date": "2028-01-01",
             },
@@ -268,7 +259,7 @@ class StockItemDetailViewTest(APITestCase):
     def test_put_response_has_nested_ingredient(self):
         response = self.client.put(
             self.url,
-            {"ingredient_id": self.flour.pk, "quantity": "200.00"},
+            {"ingredient_id": self.flour.pk, "unit": "g", "quantity": "200.00"},
             format="json",
         )
         self.assertIn("ingredient", response.data)
@@ -276,11 +267,11 @@ class StockItemDetailViewTest(APITestCase):
 
     def test_put_other_users_item_returns_404(self):
         other_stock = StockItem.objects.create(
-            user=self.other_user, ingredient=self.milk, quantity=2
+            user=self.other_user, ingredient=self.milk, quantity=2, unit="L"
         )
         response = self.client.put(
             reverse("stock-detail", args=[other_stock.pk]),
-            {"ingredient_id": self.milk.pk, "quantity": "5.00"},
+            {"ingredient_id": self.milk.pk, "unit": "L", "quantity": "5.00"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -311,7 +302,7 @@ class StockItemDetailViewTest(APITestCase):
 
     def test_patch_other_users_item_returns_404(self):
         other_stock = StockItem.objects.create(
-            user=self.other_user, ingredient=self.milk, quantity=2
+            user=self.other_user, ingredient=self.milk, quantity=2, unit="L"
         )
         response = self.client.patch(
             reverse("stock-detail", args=[other_stock.pk]),
@@ -329,7 +320,7 @@ class StockItemDetailViewTest(APITestCase):
 
     def test_delete_other_users_item_returns_404_and_does_not_delete(self):
         other_stock = StockItem.objects.create(
-            user=self.other_user, ingredient=self.milk, quantity=2
+            user=self.other_user, ingredient=self.milk, quantity=2, unit="L"
         )
         response = self.client.delete(reverse("stock-detail", args=[other_stock.pk]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -347,8 +338,8 @@ class RecipeMatchViewTest(APITestCase):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
         self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
         self.client.force_authenticate(user=self.user)
-        self.flour = Ingredient.objects.create(name="Flour", unit="g")
-        self.milk = Ingredient.objects.create(name="Milk", unit="L")
+        self.flour = Ingredient.objects.create(name="Flour")
+        self.milk = Ingredient.objects.create(name="Milk")
         self.url = reverse("recipe-match")
         self.expected_recipe = {
             "id": 1,
