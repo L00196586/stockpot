@@ -48,6 +48,7 @@ resource "google_cloud_run_v2_service" "staging_app" {
       # Connection string for dj-database-url
       env {
         name  = "DATABASE_URL"
+        # Use the simplified Unix socket format
         value = "postgres://${google_sql_user.staging_user.name}:${google_sql_user.staging_user.password}@/${google_sql_database.staging_db.name}?host=/cloudsql/${google_sql_database_instance.staging_db_instance.connection_name}"
       }
     }
