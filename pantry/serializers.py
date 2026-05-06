@@ -5,7 +5,7 @@ from .models import Ingredient, SavedRecipe, StockItem
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ["id", "name", "unit"]
+        fields = ["id", "name"]
 
 
 class StockItemReadSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class StockItemReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockItem
-        fields = ["id", "ingredient", "quantity", "expiry_date", "created_at", "updated_at"]
+        fields = ["id", "ingredient", "unit", "quantity", "expiry_date", "created_at", "updated_at"]
 
 
 class StockItemWriteSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class StockItemWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockItem
-        fields = ["id", "ingredient_id", "quantity", "expiry_date"]
+        fields = ["id", "ingredient_id", "unit", "quantity", "expiry_date"]
 
     def validate(self, attrs):
         request = self.context.get("request")

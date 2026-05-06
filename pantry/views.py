@@ -70,7 +70,7 @@ class PantryPageView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["unit_choices"] = Ingredient.Unit.choices
+        context["unit_choices"] = StockItem.Unit.choices
         return context
 
 
