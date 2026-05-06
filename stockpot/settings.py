@@ -10,6 +10,8 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost", cast=Csv())
 
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="http://localhost:8000", cast=Csv())
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
