@@ -63,9 +63,10 @@ resource "google_cloud_run_v2_service" "staging_app" {
 }
 
 # Set the application as public
-resource "google_cloud_run_service_iam_member" "public_access" {
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  project  = google_cloud_run_v2_service.staging_app.project
   location = google_cloud_run_v2_service.staging_app.location
-  service  = google_cloud_run_v2_service.staging_app.name
+  name     = google_cloud_run_v2_service.staging_app.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
