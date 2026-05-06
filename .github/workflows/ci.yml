@@ -108,7 +108,7 @@ jobs:
           --health-retries 5
 
     env:
-      DJANO_SECRET_KEY: "ci-insecure-secret-key-not-used-in-production"
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DEBUG: "True"
       ALLOWED_HOSTS: "localhost"
       DB_NAME: stockpot_test
