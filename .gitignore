@@ -38,3 +38,6 @@ media/
 .DS_Store
 
 /local_files/*
+
+# Ignore GCP Service Account Keys
+*.json
