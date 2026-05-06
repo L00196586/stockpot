@@ -1,4 +1,10 @@
 terraform {
+  # Using a bucket to maintain the state
+  backend "gcs" {
+    bucket  = "stockpot-terraform-state-16101989"
+    prefix  = "terraform/staging"
+  }
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -8,7 +14,6 @@ terraform {
 }
 
 provider "google" {
-  # Replace this with your exact Google Cloud Project ID
   project = "stockpot-infrastructure"
   region  = "us-central1"
 }
