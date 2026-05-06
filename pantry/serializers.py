@@ -5,7 +5,7 @@ from .models import Ingredient, SavedRecipe, StockItem
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ["id", "name", "unit"]
+        fields = ["id", "name"]
 
 
 class StockItemReadSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class StockItemReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockItem
-        fields = ["id", "ingredient", "quantity", "expiry_date", "created_at", "updated_at"]
+        fields = ["id", "ingredient", "unit", "quantity", "expiry_date", "created_at", "updated_at"]
 
 
 class StockItemWriteSerializer(serializers.ModelSerializer):
@@ -24,7 +24,26 @@ class StockItemWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockItem
-        fields = ["id", "ingredient_id", "quantity", "expiry_date"]
+        fields = ["id", "ingredient_id", "unit", "quantity", "expiry_date"]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        ingredient = attrs.get("ingredient")
+
+        # On create, prevent duplicates. the User should use PATCH to update the existing item instead
+        if self.instance is None and ingredient:
+            if StockItem.objects.filter(user=request.user, ingredient=ingredient).exists():
+                raise serializers.ValidationError(
+                    {"ingredient_id": "This ingredient is already in your pantry. Use PATCH to update it."}
+                )
+        return attrs
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        return super().create(validated_data)
+
+    def to_representation(self, instance):
+        return StockItemReadSerializer(instance, context=self.context).data
 
     def validate(self, attrs):
         request = self.context.get("request")
