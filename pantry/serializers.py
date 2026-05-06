@@ -30,25 +30,6 @@ class StockItemWriteSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         ingredient = attrs.get("ingredient")
 
-        # On create, prevent duplicates. the User should use PATCH to update the existing item instead
-        if self.instance is None and ingredient:
-            if StockItem.objects.filter(user=request.user, ingredient=ingredient).exists():
-                raise serializers.ValidationError(
-                    {"ingredient_id": "This ingredient is already in your pantry. Use PATCH to update it."}
-                )
-        return attrs
-
-    def create(self, validated_data):
-        validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
-
-    def to_representation(self, instance):
-        return StockItemReadSerializer(instance, context=self.context).data
-
-    def validate(self, attrs):
-        request = self.context.get("request")
-        ingredient = attrs.get("ingredient")
-
         # On create, prevent duplicates. The User should use PATCH to update the existing item instead
         if self.instance is None and ingredient:
             if StockItem.objects.filter(user=request.user, ingredient=ingredient).exists():
