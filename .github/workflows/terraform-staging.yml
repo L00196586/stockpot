@@ -1,0 +1,39 @@
+name: Staging Infrastructure
+
+on:
+  # Manual trigger button in the GitHub Actions tab. To review after everything works
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: Terraform Apply (Staging)
+    runs-on: ubuntu-latest
+
+    environment: Staging
+
+    defaults:
+      run:
+        working-directory: ./terraform/environments/staging
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      # Set for reading the logs
+      - name: Terraform Plan
+        run: terraform plan
+
+      # Execute the changes and build the infrastructure
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
