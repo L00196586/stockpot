@@ -81,6 +81,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SPOONACULAR_API_KEY = config("SPOONACULAR_API_KEY", default="")
 
+# Cache settings
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'stockpot_cache_table',
+    }
+}
+
+# Ingredient search results are cached for 24 hours.
+SEARCH_CACHE_TTL = 60 * 60 * 24
+
+# Recipe detail records older than this many days are re-fetched from the API.
+RECIPE_DETAIL_CACHE_DAYS = 30
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",

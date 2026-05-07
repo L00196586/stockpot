@@ -1,8 +1,10 @@
 #!/bin/sh
 
-# Wait for DB if necessary (optional but good)
 echo "Running migrations..."
 python manage.py migrate --noinput
+
+echo "Creating cache table"
+python manage.py createcachetable
 
 # Start Gunicorn
 echo "Starting server..."

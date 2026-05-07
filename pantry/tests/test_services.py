@@ -1,15 +1,21 @@
 from unittest.mock import patch
 
 import requests
+from datetime import timedelta
+
+from django.core.cache import cache
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from pantry.services import (
     SpoonacularError,
     _build_diet_params,
+    _search_cache_key,
     find_recipes_by_ingredients,
     get_recipe_details,
 )
 
 
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
 class RecipeSuggestionsServiceTest(TestCase):
 
     def setUp(self):
@@ -130,6 +136,7 @@ class RecipeSuggestionsServiceTest(TestCase):
         self.assertEqual(result[0]["image"], "")
 
 
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
 class RecipeDietaryFilteringServiceTest(TestCase):
 
     def test_empty_diets_returns_empty_params(self):
@@ -246,6 +253,7 @@ class RecipeDietaryFilteringServiceTest(TestCase):
         self.assertNotIn("intolerances", sent_params)
 
 
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
 class RecipeDetailServiceTest(TestCase):
 
     def setUp(self):
@@ -393,3 +401,238 @@ class RecipeDetailServiceTest(TestCase):
         result = get_recipe_details(42)
 
         self.assertEqual(result["nutrition"], [])
+
+
+class SearchCacheKeyTest(TestCase):
+
+    def test_same_ingredients_produce_same_key(self):
+        k1 = _search_cache_key(["Flour", "Milk"], None)
+        k2 = _search_cache_key(["Flour", "Milk"], None)
+        self.assertEqual(k1, k2)
+
+    def test_same_ingredient_different_order_produce_same_key(self):
+        k1 = _search_cache_key(["Flour", "Milk"], None)
+        k2 = _search_cache_key(["Milk", "Flour"], None)
+        self.assertEqual(k1, k2)
+
+    def test_different_ingredients_produce_different_keys(self):
+        k1 = _search_cache_key(["Flour"], None)
+        k2 = _search_cache_key(["Eggs"], None)
+        self.assertNotEqual(k1, k2)
+
+    def test_diets_are_included_in_key(self):
+        k1 = _search_cache_key(["Flour"], None)
+        k2 = _search_cache_key(["Flour"], ["vegan"])
+        self.assertNotEqual(k1, k2)
+
+    def test_same_ingredient_same_diets_different_order_produce_same_key(self):
+        k1 = _search_cache_key(["Flour"], ["vegan", "gluten_free"])
+        k2 = _search_cache_key(["Flour"], ["gluten_free", "vegan"])
+        self.assertEqual(k1, k2)
+
+    def test_key_has_expected_prefix(self):
+        key = _search_cache_key(["Flour"], None)
+        self.assertTrue(key.startswith("recipe_search:"))
+
+
+@override_settings(
+    SPOONACULAR_API_KEY="test-key",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class FindRecipesByIngredientsCacheTest(TestCase):
+
+    def setUp(self):
+        cache.clear()
+        self.api_response = [
+            {
+                "id": 1,
+                "title": "Pancakes",
+                "image": "https://example.com/pancakes.jpg",
+                "usedIngredientCount": 2,
+                "missedIngredientCount": 1,
+                "usedIngredients": [{"name": "Flour"}, {"name": "Milk"}],
+                "missedIngredients": [{"name": "Eggs"}],
+            }
+        ]
+        self.expected = [
+            {
+                "id": 1,
+                "title": "Pancakes",
+                "image": "https://example.com/pancakes.jpg",
+                "used_count": 2,
+                "missed_count": 1,
+                "used_ingredients": ["Flour", "Milk"],
+                "missed_ingredients": ["Eggs"],
+            }
+        ]
+
+    def tearDown(self):
+        cache.clear()
+
+    @patch("pantry.services.requests.get")
+    def test_cache_miss_calls_api_and_stores_result(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.api_response
+
+        result = find_recipes_by_ingredients(["Flour", "Milk"])
+
+        mock_get.assert_called_once()
+        self.assertEqual(result, self.expected)
+
+        key = _search_cache_key(["Flour", "Milk"], None)
+        self.assertEqual(cache.get(key), self.expected)
+
+    @patch("pantry.services.requests.get")
+    def test_cache_hit_skips_api_call(self, mock_get):
+        key = _search_cache_key(["Flour", "Milk"], None)
+        cache.set(key, self.expected, timeout=60)
+
+        result = find_recipes_by_ingredients(["Flour", "Milk"])
+
+        mock_get.assert_not_called()
+        self.assertEqual(result, self.expected)
+
+    @patch("pantry.services.requests.get")
+    def test_different_ingredients_use_different_cache_entries(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.api_response
+
+        find_recipes_by_ingredients(["Flour"])
+        find_recipes_by_ingredients(["Eggs"])
+
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("pantry.services.requests.get")
+    def test_api_error_does_not_populate_cache(self, mock_get):
+        mock_get.return_value.ok = False
+        mock_get.return_value.status_code = 500
+
+        with self.assertRaises(SpoonacularError):
+            find_recipes_by_ingredients(["Flour"])
+
+        key = _search_cache_key(["Flour"], None)
+        self.assertIsNone(cache.get(key))
+
+    @patch("pantry.services.requests.get")
+    def test_diets_param_uses_separate_cache_entry(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"results": []}
+
+        find_recipes_by_ingredients(["Flour"])
+        find_recipes_by_ingredients(["Flour"], diets=["vegan"])
+
+        self.assertEqual(mock_get.call_count, 2)
+
+
+@override_settings(
+    SPOONACULAR_API_KEY="test-key",
+    RECIPE_DETAIL_CACHE_DAYS=30,
+)
+class RecipeDetailCacheTest(TestCase):
+
+    def setUp(self):
+        from pantry.models import CachedRecipe
+        self.CachedRecipe = CachedRecipe
+        self.recipe_id = 42
+        self.api_response = {
+            "id": 42,
+            "title": "Spaghetti Bolognese",
+            "image": "https://example.com/spag.jpg",
+            "readyInMinutes": 60,
+            "preparationMinutes": 15,
+            "cookingMinutes": 45,
+            "nutrition": {
+                "nutrients": [
+                    {"name": "Calories", "amount": 550, "unit": "kcal"},
+                ]
+            },
+            "analyzedInstructions": [
+                {"name": "", "steps": [{"number": 1, "step": "Boil pasta."}]},
+            ],
+        }
+
+    @patch("pantry.services.requests.get")
+    def test_cache_miss_fetches_api_and_saves_to_db(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.api_response
+
+        result = get_recipe_details(self.recipe_id)
+
+        mock_get.assert_called_once()
+        self.assertEqual(result["title"], "Spaghetti Bolognese")
+        self.assertTrue(self.CachedRecipe.objects.filter(recipe_id=self.recipe_id).exists())
+
+    @patch("pantry.services.requests.get")
+    def test_fresh_db_record_skips_api_call(self, mock_get):
+        self.CachedRecipe.objects.create(
+            recipe_id=self.recipe_id,
+            title="Spaghetti Bolognese",
+            image="https://example.com/spag.jpg",
+            ready_in_minutes=60,
+            prep_minutes=15,
+            cook_minutes=45,
+            nutrition=[{"name": "Calories", "amount": 550, "unit": "kcal"}],
+            instructions=[{"number": 1, "step": "Boil pasta."}],
+        )
+
+        result = get_recipe_details(self.recipe_id)
+
+        mock_get.assert_not_called()
+        self.assertEqual(result["title"], "Spaghetti Bolognese")
+
+    @patch("pantry.services.requests.get")
+    def test_stale_db_record_triggers_api_refresh(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.api_response
+
+        record = self.CachedRecipe.objects.create(
+            recipe_id=self.recipe_id,
+            title="Old Title",
+            nutrition=[], instructions=[],
+        )
+        stale_time = timezone.now() - timedelta(days=31)
+        self.CachedRecipe.objects.filter(pk=record.pk).update(cached_at=stale_time)
+
+        result = get_recipe_details(self.recipe_id)
+
+        mock_get.assert_called_once()
+        self.assertEqual(result["title"], "Spaghetti Bolognese")
+
+    @patch("pantry.services.requests.get")
+    def test_api_result_upserts_existing_record(self, mock_get):
+        mock_get.return_value.ok = True
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = self.api_response
+
+        self.CachedRecipe.objects.create(
+            recipe_id=self.recipe_id, title="Old Title", nutrition=[], instructions=[]
+        )
+        stale_time = timezone.now() - timedelta(days=31)
+        self.CachedRecipe.objects.filter(recipe_id=self.recipe_id).update(cached_at=stale_time)
+
+        get_recipe_details(self.recipe_id)
+
+        self.assertEqual(self.CachedRecipe.objects.filter(recipe_id=self.recipe_id).count(), 1)
+        updated = self.CachedRecipe.objects.get(recipe_id=self.recipe_id)
+        self.assertEqual(updated.title, "Spaghetti Bolognese")
+
+    def test_fresh_cache_returns_to_detail_dict_shape(self):
+        self.CachedRecipe.objects.create(
+            recipe_id=self.recipe_id,
+            title="Spaghetti Bolognese",
+            image="https://example.com/spag.jpg",
+            ready_in_minutes=60,
+            prep_minutes=15,
+            cook_minutes=45,
+            nutrition=[{"name": "Calories", "amount": 550, "unit": "kcal"}],
+            instructions=[{"number": 1, "step": "Boil pasta."}],
+        )
+        result = get_recipe_details(self.recipe_id)
+        expected_keys = {"id", "title", "image", "ready_in_minutes", "prep_minutes",
+                         "cook_minutes", "nutrition", "instructions"}
+        self.assertEqual(set(result.keys()), expected_keys)
