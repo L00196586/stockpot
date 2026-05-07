@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.test import TestCase
 
-from pantry.models import Ingredient, StockItem, SavedRecipe
+from pantry.models import CachedRecipe, Ingredient, StockItem, SavedRecipe
 
 
 class IngredientModelTest(TestCase):
@@ -137,3 +137,66 @@ class SavedRecipeModelTest(TestCase):
         newest = SavedRecipe.objects.create(user=self.user, recipe_id=2, title="Second")
         qs = list(SavedRecipe.objects.filter(user=self.user))
         self.assertEqual(qs[0].pk, newest.pk)
+
+
+class CachedRecipeModelTest(TestCase):
+
+    def _create(self, recipe_id=42, **kwargs):
+        defaults = {
+            "title": "Pasta Bolognese",
+            "image": "https://example.com/pasta.jpg",
+            "ready_in_minutes": 60,
+            "prep_minutes": 15,
+            "cook_minutes": 45,
+            "nutrition": [{"name": "Calories", "amount": 550, "unit": "kcal"}],
+            "instructions": [{"number": 1, "step": "Boil pasta."}],
+        }
+        defaults.update(kwargs)
+        return CachedRecipe.objects.create(recipe_id=recipe_id, **defaults)
+
+    def test_str_representation(self):
+        recipe = self._create()
+        self.assertEqual(str(recipe), "CachedRecipe(42: Pasta Bolognese)")
+
+    def test_recipe_id_is_unique(self):
+        self._create(recipe_id=1)
+        with self.assertRaises(IntegrityError):
+            self._create(recipe_id=1)
+
+    def test_image_defaults_to_empty_string(self):
+        recipe = CachedRecipe.objects.create(recipe_id=99, title="No Image")
+        self.assertEqual(recipe.image, "")
+
+    def test_optional_timing_fields_accept_null(self):
+        recipe = CachedRecipe.objects.create(
+            recipe_id=100, title="Unknown Timing",
+            ready_in_minutes=None, prep_minutes=None, cook_minutes=None,
+        )
+        self.assertIsNone(recipe.prep_minutes)
+        self.assertIsNone(recipe.cook_minutes)
+
+    def test_cached_at_is_set_automatically(self):
+        recipe = self._create()
+        self.assertIsNotNone(recipe.cached_at)
+
+    def test_to_detail_dict_returns_correct_shape(self):
+        recipe = self._create()
+        result = recipe.to_detail_dict()
+        self.assertEqual(result["id"], 42)
+        self.assertEqual(result["title"], "Pasta Bolognese")
+        self.assertEqual(result["ready_in_minutes"], 60)
+        self.assertEqual(result["nutrition"], [{"name": "Calories", "amount": 550, "unit": "kcal"}])
+        self.assertEqual(result["instructions"], [{"number": 1, "step": "Boil pasta."}])
+
+    def test_to_detail_dict_does_not_expose_pk(self):
+        recipe = self._create()
+        result = recipe.to_detail_dict()
+        self.assertNotIn("pk", result)
+        self.assertNotIn("cached_at", result)
+
+    def test_ordering_is_by_recipe_id(self):
+        self._create(recipe_id=30)
+        self._create(recipe_id=10)
+        self._create(recipe_id=20)
+        ids = list(CachedRecipe.objects.values_list("recipe_id", flat=True))
+        self.assertEqual(ids, [10, 20, 30])
