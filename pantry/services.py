@@ -1,5 +1,11 @@
+import hashlib
 import requests
+from datetime import timedelta
+
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
+from .models import CachedRecipe
 
 SPOONACULAR_BASE_URL = "https://api.spoonacular.com"
 # Timeout in seconds
@@ -17,6 +23,7 @@ SPOONACULAR_INTOLERANCE_MAP = {
     "dairy_free": "dairy",
     "nut_free": "tree nut,peanut",
 }
+
 
 
 class SpoonacularError(Exception):
@@ -52,6 +59,20 @@ def _build_diet_params(diets: list[str]) -> dict:
     return params
 
 
+def _search_cache_key(ingredient_names: list[str], diets: list[str] | None) -> str:
+    """
+    Build a cache key for an ingredient search
+
+    The key is an MD5 hash of the sorted ingredients and sorted diets so that
+    the same query always maps to the same key regardless of input order
+    """
+    parts = sorted(ingredient_names)
+    if diets:
+        parts.append("diets:" + ",".join(sorted(diets)))
+    hex_digest = hashlib.md5("|".join(parts).encode()).hexdigest()
+    return f"recipe_search:{hex_digest}"
+
+
 def find_recipes_by_ingredients(
     ingredient_names: list[str],
     number: int = 12,
@@ -80,6 +101,12 @@ def find_recipes_by_ingredients(
     api_key = settings.SPOONACULAR_API_KEY
     if not api_key:
         raise SpoonacularError("Spoonacular API key is not configured. Set SPOONACULAR_API_KEY in your environment.")
+
+    # Check for cached result before making API request
+    cache_key = _search_cache_key(ingredient_names, diets)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     use_complex_search = bool(diets)
 
@@ -123,7 +150,7 @@ def find_recipes_by_ingredients(
     # complexSearch wraps results, findByIngredients returns a bare list.
     items = raw.get("results", raw) if isinstance(raw, dict) else raw
 
-    return [
+    results = [
         {
             "id": item["id"],
             "title": item["title"],
@@ -136,10 +163,20 @@ def find_recipes_by_ingredients(
         for item in items
     ]
 
+    # Store result on cache for the defined time on SEARCH_CACHE_TTL
+    cache.set(cache_key, results, timeout=settings.SEARCH_CACHE_TTL)
+
+    return results
+
 
 def get_recipe_details(recipe_id: int) -> dict:
     """
-    Request to Spoonacular /recipes/{id}/information endpoint.
+    Returns detail data for a single Spoonacular recipe
+
+    Uses the local CachedRecipe table with the following strategy:
+      1. If a CachedRecipe row exists and is within RECIPE_DETAIL_CACHE_DAYS, return it
+      2. Otherwise fetch from the Spoonacular API
+      3. Insert/Update the result into CachedRecipe and return the fresh data
 
     Args:
         recipe_id   - Spoonacular recipe ID.
@@ -152,6 +189,13 @@ def get_recipe_details(recipe_id: int) -> dict:
     Raises a SpoonacularError if the API key is missing, the recipe is not found,
     the API is unreachable, or the API returns a non-200 response.
     """
+
+    # Check for CachedRecipe before making API request
+    cutoff = timezone.now() - timedelta(days=settings.RECIPE_DETAIL_CACHE_DAYS)
+    cached = CachedRecipe.objects.filter(recipe_id=recipe_id, cached_at__gte=cutoff).first()
+    if cached:
+        return cached.to_detail_dict()
+
     api_key = settings.SPOONACULAR_API_KEY
     if not api_key:
         raise SpoonacularError("Spoonacular API key is not configured. Set SPOONACULAR_API_KEY in your environment.")
@@ -199,7 +243,7 @@ def get_recipe_details(recipe_id: int) -> dict:
         """
         return None if value == -1 else value
 
-    return {
+    detail = {
         "id": data["id"],
         "title": data["title"],
         "image": data.get("image", ""),
@@ -209,3 +253,19 @@ def get_recipe_details(recipe_id: int) -> dict:
         "nutrition": nutrients,
         "instructions": instructions,
     }
+
+    # Store result on cache for the defined time on SEARCH_CACHE_TTL
+    CachedRecipe.objects.update_or_create(
+        recipe_id=recipe_id,
+        defaults={
+            "title": detail["title"],
+            "image": detail["image"],
+            "ready_in_minutes": detail["ready_in_minutes"],
+            "prep_minutes": detail["prep_minutes"],
+            "cook_minutes": detail["cook_minutes"],
+            "nutrition": detail["nutrition"],
+            "instructions": detail["instructions"],
+        },
+    )
+
+    return detail
