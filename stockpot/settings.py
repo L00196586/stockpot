@@ -81,6 +81,28 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SPOONACULAR_API_KEY = config("SPOONACULAR_API_KEY", default="")
 
+# Cache settings
+# Defaults to in-process memory cache (so there's no extra infra needed in development).
+# For production, point CACHE_BACKEND should be pointed to a Redis backend and
+# CACHE_LOCATION to the Redis URL
+# TODO: Spin up a real Redis instance for production and update these settings accordingly. Meanwhile the inMemCache
+#  will be used in production as well, which is not ideal but enough for this stage
+CACHES = {
+    "default": {
+        "BACKEND": config(
+            "CACHE_BACKEND",
+            default="django.core.cache.backends.locmem.LocMemCache",
+        ),
+        "LOCATION": config("CACHE_LOCATION", default="stockpot"),
+    }
+}
+
+# Ingredient search results are cached for 24 hours.
+SEARCH_CACHE_TTL = 60 * 60 * 24
+
+# Recipe detail records older than this many days are re-fetched from the API.
+RECIPE_DETAIL_CACHE_DAYS = 30
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
