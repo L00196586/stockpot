@@ -222,7 +222,14 @@
     }).then(() => { window.location.href = '/login/'; });
   });
 
-  loadFavouriteIds();
-  loadProfileFilters();
+  // Await profile filters before any auto-trigger so dietary prefs are pre-applied
+  async function init() {
+    await loadProfileFilters();
+    loadFavouriteIds();
+    if (new URLSearchParams(window.location.search).get('autoload') === '1') {
+      document.getElementById('btn-find-recipes').click();
+    }
+  }
+  init();
 </script>
 {% endblock %}

@@ -36,9 +36,12 @@
   <!-- Inventory table -->
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0">Current Inventory</h5>
-    <button class="btn btn-primary btn-sm" id="btn-add-item" data-bs-toggle="modal" data-bs-target="#itemModal">
-      + Add Item
-    </button>
+    <div class="d-flex gap-2">
+      <a href="/recipes/?autoload=1" class="btn btn-success btn-sm">Find Recipes</a>
+      <button class="btn btn-primary btn-sm" id="btn-add-item" data-bs-toggle="modal" data-bs-target="#itemModal">
+        + Add Item
+      </button>
+    </div>
   </div>
 
   <div class="table-responsive">
