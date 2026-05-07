@@ -178,7 +178,8 @@
     const tbody = document.getElementById('stock-tbody');
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
-    const todayStr = today.toISOString().slice(0, 10);
+    // Use the UTC date to match the timezone-aware created_at returned by the API
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     let total = items.length;
     let expiring = 0;
