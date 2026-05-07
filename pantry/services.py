@@ -68,7 +68,7 @@ def _search_cache_key(ingredient_names: list[str], diets: list[str] | None) -> s
     parts = sorted(ingredient_names)
     if diets:
         parts.append("diets:" + ",".join(sorted(diets)))
-    hex_digest = hashlib.md5("|".join(parts).encode()).hexdigest()
+    hex_digest = hashlib.md5("|".join(parts).encode(), usedforsecurity=False).hexdigest()
     return f"recipe_search:{hex_digest}"
 
 
