@@ -82,18 +82,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SPOONACULAR_API_KEY = config("SPOONACULAR_API_KEY", default="")
 
 # Cache settings
-# Defaults to in-process memory cache (so there's no extra infra needed in development).
-# For production, point CACHE_BACKEND should be pointed to a Redis backend and
-# CACHE_LOCATION to the Redis URL
-# TODO: Spin up a real Redis instance for production and update these settings accordingly. Meanwhile the inMemCache
-#  will be used in production as well, which is not ideal but enough for this stage
 CACHES = {
-    "default": {
-        "BACKEND": config(
-            "CACHE_BACKEND",
-            default="django.core.cache.backends.locmem.LocMemCache",
-        ),
-        "LOCATION": config("CACHE_LOCATION", default="stockpot"),
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'stockpot_cache_table',
     }
 }
 
