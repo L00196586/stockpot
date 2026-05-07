@@ -27,6 +27,40 @@ class IngredientModelTest(TestCase):
         self.assertEqual(names, ["Apple", "Milk", "Zucchini"])
 
 
+class IngredientNormalisationTest(TestCase):
+
+    def test_lowercase_name_is_capitalised_on_create(self):
+        ing = Ingredient.objects.create(name="milk")
+        self.assertEqual(ing.name, "Milk")
+
+    def test_all_uppercase_is_normalised_on_create(self):
+        ing = Ingredient.objects.create(name="CHEESE")
+        self.assertEqual(ing.name, "Cheese")
+
+    def test_mixed_case_is_normalised_on_create(self):
+        ing = Ingredient.objects.create(name="eGGs")
+        self.assertEqual(ing.name, "Eggs")
+
+    def test_already_correct_case_is_unchanged(self):
+        ing = Ingredient.objects.create(name="Flour")
+        self.assertEqual(ing.name, "Flour")
+
+    def test_leading_trailing_whitespace_is_stripped(self):
+        ing = Ingredient.objects.create(name="  butter  ")
+        self.assertEqual(ing.name, "Butter")
+
+    def test_capitalisation_is_applied_on_update(self):
+        ing = Ingredient.objects.create(name="Flour")
+        ing.name = "oats"
+        ing.save()
+        ing.refresh_from_db()
+        self.assertEqual(ing.name, "Oats")
+
+    def test_multi_word_ingredient_only_capitalises_first_letter(self):
+        ing = Ingredient.objects.create(name="olive oil")
+        self.assertEqual(ing.name, "Olive oil")
+
+
 class StockItemModelTest(TestCase):
 
     def setUp(self):

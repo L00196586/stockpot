@@ -14,10 +14,10 @@ from pantry.serializers import (
 class IngredientSerializerTest(TestCase):
 
     def test_serializes_all_expected_fields(self):
-        ingredient = Ingredient.objects.create(name="Olive Oil")
+        ingredient = Ingredient.objects.create(name="Olive oil")
         data = IngredientSerializer(ingredient).data
         self.assertEqual(set(data.keys()), {"id", "name"})
-        self.assertEqual(data["name"], "Olive Oil")
+        self.assertEqual(data["name"], "Olive oil")
 
     def test_creates_ingredient_from_valid_data(self):
         serializer = IngredientSerializer(data={"name": "Butter"})
