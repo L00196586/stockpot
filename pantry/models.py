@@ -52,3 +52,44 @@ class SavedRecipe(models.Model):
 
     def __str__(self):
         return f"{self.user.username} – {self.title}"
+
+
+class CachedRecipe(models.Model):
+    """
+    Local cache for Spoonacular recipe detail data.
+
+    Records are considered fresh for RECIPE_DETAIL_CACHE_DAYS days.  After that
+    the service layer will re-fetch from the API and update this row in place.
+    """
+
+    recipe_id = models.IntegerField(unique=True)
+    title = models.CharField(max_length=500)
+    image = models.URLField(blank=True, default="")
+    ready_in_minutes = models.IntegerField(null=True, blank=True)
+    prep_minutes = models.IntegerField(null=True, blank=True)
+    cook_minutes = models.IntegerField(null=True, blank=True)
+    # Stored as a list of {name, amount, unit} dicts.
+    nutrition = models.JSONField(default=list)
+    # Stored as a list of {number, step} dicts.
+    instructions = models.JSONField(default=list)
+    # Updated every time the record is refreshed from the API.
+    cached_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["recipe_id"]
+
+    def __str__(self):
+        return f"CachedRecipe({self.recipe_id}: {self.title})"
+
+    def to_detail_dict(self) -> dict:
+        """Return the same structure that get_recipe_details() produces."""
+        return {
+            "id": self.recipe_id,
+            "title": self.title,
+            "image": self.image,
+            "ready_in_minutes": self.ready_in_minutes,
+            "prep_minutes": self.prep_minutes,
+            "cook_minutes": self.cook_minutes,
+            "nutrition": self.nutrition,
+            "instructions": self.instructions,
+        }
