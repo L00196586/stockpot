@@ -633,5 +633,6 @@ class RecipeDetailCacheTest(TestCase):
             instructions=[{"number": 1, "step": "Boil pasta."}],
         )
         result = get_recipe_details(self.recipe_id)
-        expected_keys = {"id", "title", "image", "ready_in_minutes", "prep_minutes", "cook_minutes", "nutrition", "instructions"}
+        expected_keys = {"id", "title", "image", "ready_in_minutes", "prep_minutes",
+                         "cook_minutes", "nutrition", "instructions"}
         self.assertEqual(set(result.keys()), expected_keys)

@@ -25,7 +25,6 @@ SPOONACULAR_INTOLERANCE_MAP = {
 }
 
 
-
 class SpoonacularError(Exception):
     """
     Raised when the Spoonacular API returns an unexpected response.
