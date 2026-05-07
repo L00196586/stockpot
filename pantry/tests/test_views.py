@@ -138,7 +138,6 @@ class StockItemListCreateViewTest(APITestCase):
         date_part = str(created_at)[:10]
         datetime.date.fromisoformat(date_part)
 
-
     def test_create_stock_item_returns_201(self):
         response = self.client.post(
             self.url,
