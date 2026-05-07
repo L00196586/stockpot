@@ -8,6 +8,10 @@ class Ingredient(models.Model):
     class Meta:
         ordering = ["name"]
 
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip().capitalize()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
