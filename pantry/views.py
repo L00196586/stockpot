@@ -159,7 +159,7 @@ class RecipeDetailPageView(TemplateView):
         return context
 
 
-class FavouriteListCreateView(generics.ListCreateAPIView):
+class CookbookListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/cookbook/ — List the authenticated user's cookbook.
     POST /api/cookbook/ — Save a recipe to user's cookbook.
@@ -171,7 +171,7 @@ class FavouriteListCreateView(generics.ListCreateAPIView):
         return SavedRecipe.objects.filter(user=self.request.user)
 
 
-class FavouriteDeleteView(generics.DestroyAPIView):
+class CookbookDeleteView(generics.DestroyAPIView):
     """
     DELETE /api/cookbook/<recipe_id>/
     Remove a recipe from user's cookbook by Spoonacular recipe ID.
@@ -185,7 +185,7 @@ class FavouriteDeleteView(generics.DestroyAPIView):
         )
 
 
-class FavouritesPageView(TemplateView):
+class CookbookPageView(TemplateView):
     """
     GET /cookbook/
     Cookbook HTML page.

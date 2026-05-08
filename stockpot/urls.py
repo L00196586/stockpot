@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from users.views import LoginPageView, ProfilePageView, RegisterPageView
-from pantry.views import FavouritesPageView, PantryPageView, RecipeDetailPageView, RecipeSuggestionsPageView
+from pantry.views import CookbookPageView, PantryPageView, RecipeDetailPageView, RecipeSuggestionsPageView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -14,5 +14,5 @@ urlpatterns = [
     path("pantry/", PantryPageView.as_view(), name="pantry-page"),
     path("recipes/", RecipeSuggestionsPageView.as_view(), name="recipes-page"),
     path("recipes/<int:recipe_id>/", RecipeDetailPageView.as_view(), name="recipe-detail-page"),
-    path("cookbook/", FavouritesPageView.as_view(), name="cookbook-page"),
+    path("cookbook/", CookbookPageView.as_view(), name="cookbook-page"),
 ]
