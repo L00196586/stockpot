@@ -190,4 +190,4 @@ class CookbookPageView(TemplateView):
     GET /cookbook/
     Cookbook HTML page.
     """
-    template_name = "pantry/favourites.html"
+    template_name = "pantry/cookbook.html"

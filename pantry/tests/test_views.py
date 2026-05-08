@@ -493,7 +493,7 @@ class PantryPageViewTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "pantry/stock.html")
+        self.assertTemplateUsed(response, "pantry/pantry.html")
 
     def test_context_includes_unit_choices(self):
         self.client.force_login(self.user)
@@ -706,4 +706,4 @@ class CookbookPageViewTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "pantry/favourites.html")
+        self.assertTemplateUsed(response, "pantry/cookbook.html")
