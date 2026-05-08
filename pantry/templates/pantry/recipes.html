@@ -66,7 +66,7 @@
   const MATCH_URL      = '/api/recipes/match/';
   const DETAILS_URL    = '/recipes/';
   const PROFILE_URL    = '/api/auth/profile/';
-  const FAVOURITES_URL = '/api/cookbook/';
+  const COOKBOOK_URL = '/api/cookbook/';
 
   let savedIds = new Set();
 
@@ -87,19 +87,19 @@
     return Array.from(document.querySelectorAll('.diet-filter:checked')).map(cb => cb.value);
   }
 
-  async function loadFavouriteIds() {
+  async function loadCookbookIds() {
     try {
-      const resp = await fetch(FAVOURITES_URL, { credentials: 'same-origin' });
+      const resp = await fetch(COOKBOOK_URL, { credentials: 'same-origin' });
       if (!resp.ok) return;
       const data = await resp.json();
       (data.results ?? data).forEach(f => savedIds.add(f.recipe_id));
     } catch { /* non-critical */ }
   }
 
-  async function toggleFavourite(r, btn) {
+  async function toggleSavedRecipe(r, btn) {
     const isSaved = savedIds.has(r.id);
     if (isSaved) {
-      const resp = await fetch(`${FAVOURITES_URL}${r.id}/`, {
+      const resp = await fetch(`${COOKBOOK_URL}${r.id}/`, {
         method: 'DELETE',
         credentials: 'same-origin',
         headers: { 'X-CSRFToken': getCsrf() },
@@ -110,7 +110,7 @@
         btn.classList.replace('btn-warning', 'btn-outline-warning');
       }
     } else {
-      const resp = await fetch(FAVOURITES_URL, {
+      const resp = await fetch(COOKBOOK_URL, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
@@ -149,8 +149,8 @@
     recipes.forEach(r => {
       const detailUrl      = `${DETAILS_URL}${r.id}/`;
       const isSaved        = savedIds.has(r.id);
-      const favouriteLabel = isSaved ? '\u2665 Saved' : '\u2661 Save';
-      const favouriteClass = isSaved ? 'btn-warning' : 'btn-outline-warning';
+      const savedRecipeLabel = isSaved ? '\u2665 Saved' : '\u2661 Save';
+      const savedRecipeClass = isSaved ? 'btn-warning' : 'btn-outline-warning';
       const usedBadge      = `<span class="badge bg-success me-1">${r.used_count} in pantry</span>`;
       const missBadge      = r.missed_count ? `<span class="badge bg-secondary">${r.missed_count} missing</span>` : '';
       const usedList       = r.used_ingredients.length
@@ -174,11 +174,11 @@
             ${usedList}${missList}
             <div class="mt-auto pt-2 d-flex gap-2">
               <a href="${detailUrl}" class="btn btn-sm btn-outline-primary flex-grow-1">View Recipe</a>
-              <button class="btn btn-sm ${favouriteClass} fav-btn">${favouriteLabel}</button>
+              <button class="btn btn-sm ${savedRecipeClass} fav-btn">${savedRecipeLabel}</button>
             </div>
           </div>
         </div>`;
-      col.querySelector('.fav-btn').addEventListener('click', () => toggleFavourite(r, col.querySelector('.fav-btn')));
+      col.querySelector('.fav-btn').addEventListener('click', () => toggleSavedRecipe(r, col.querySelector('.fav-btn')));
       grid.appendChild(col);
     });
   }
@@ -225,7 +225,7 @@
   // Await profile filters before any auto-trigger so dietary prefs are pre-applied
   async function init() {
     await loadProfileFilters();
-    loadFavouriteIds();
+    loadCookbookIds();
     if (new URLSearchParams(window.location.search).get('autoload') === '1') {
       document.getElementById('btn-find-recipes').click();
     }

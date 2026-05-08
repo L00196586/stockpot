@@ -66,7 +66,7 @@
 <script>
   const RECIPE_ID      = {{ recipe_id }};
   const DETAIL_URL     = `/api/recipes/${RECIPE_ID}/`;
-  const FAVOURITES_URL = '/api/cookbook/';
+  const COOKBOOK_URL = '/api/cookbook/';
 
   let currentRecipe = null;
 
@@ -83,40 +83,40 @@
             </li>`;
   }
 
-  function setFavouriteBtn(isSaved) {
+  function setSavedRecipeBtn(isSaved) {
     const btn = document.getElementById('fav-btn');
     if (isSaved) {
-      btn.textContent = '\u2665 Saved to your Cookbook';
+      btn.textContent = '\u2665 Saved to your cookbook';
       btn.className = 'btn btn-sm btn-warning';
     } else {
-      btn.textContent = '\u2661 Save to your Cookbook';
+      btn.textContent = '\u2661 Save to your cookbook';
       btn.className = 'btn btn-sm btn-outline-warning';
     }
   }
 
-  async function checkFavouriteStatus() {
+  async function checkSavedRecipeStatus() {
     try {
-      const resp = await fetch(FAVOURITES_URL, { credentials: 'same-origin' });
+      const resp = await fetch(COOKBOOK_URL, { credentials: 'same-origin' });
       if (!resp.ok) return;
       const data = await resp.json();
       const saved = (data.results ?? data).some(f => f.recipe_id === RECIPE_ID);
-      setFavouriteBtn(saved);
+      setSavedRecipeBtn(saved);
     } catch { /* non-critical */ }
   }
 
-  async function toggleFavourite() {
+  async function toggleSavedRecipe() {
     const btn = document.getElementById('fav-btn');
     const isSaved = btn.classList.contains('btn-warning');
 
     if (isSaved) {
-      const resp = await fetch(`${FAVOURITES_URL}${RECIPE_ID}/`, {
+      const resp = await fetch(`${COOKBOOK_URL}${RECIPE_ID}/`, {
         method: 'DELETE',
         credentials: 'same-origin',
         headers: { 'X-CSRFToken': getCsrf() },
       });
-      if (resp.ok || resp.status === 204) setFavouriteBtn(false);
+      if (resp.ok || resp.status === 204) setSavedRecipeBtn(false);
     } else {
-      const resp = await fetch(FAVOURITES_URL, {
+      const resp = await fetch(COOKBOOK_URL, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
@@ -126,7 +126,7 @@
           image: currentRecipe ? currentRecipe.image : '',
         }),
       });
-      if (resp.ok || resp.status === 201) setFavouriteBtn(true);
+      if (resp.ok || resp.status === 201) setSavedRecipeBtn(true);
     }
   }
 
@@ -172,7 +172,7 @@
       document.getElementById('instructions-empty').classList.remove('d-none');
     }
 
-    checkFavouriteStatus();
+    checkSavedRecipeStatus();
   }
 
   async function loadRecipe() {
@@ -193,7 +193,7 @@
     }
   }
 
-  document.getElementById('fav-btn').addEventListener('click', toggleFavourite);
+  document.getElementById('fav-btn').addEventListener('click', toggleSavedRecipe);
 
   document.getElementById('logout-link').addEventListener('click', e => {
     e.preventDefault();

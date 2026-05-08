@@ -600,7 +600,7 @@ class CookbookListCreateViewTest(APITestCase):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
         self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
         self.client.force_authenticate(user=self.user)
-        self.url = reverse("favourite-list-create")
+        self.url = reverse("cookbook-list-create")
         self.valid_payload = {"recipe_id": 42, "title": "Pancakes", "image": "https://example.com/img.jpg"}
 
     # Authentication
@@ -674,7 +674,7 @@ class CookbookDeleteViewTest(APITestCase):
         self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
         self.client.force_authenticate(user=self.user)
         self.saved = SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
-        self.url = reverse("favourite-delete", args=[42])
+        self.url = reverse("cookbook-delete", args=[42])
 
     def test_delete_requires_authentication(self):
         self.client.force_authenticate(user=None)
@@ -687,12 +687,12 @@ class CookbookDeleteViewTest(APITestCase):
 
     def test_delete_other_users_saved_recipe_returns_404(self):
         other_saved = SavedRecipe.objects.create(user=self.other_user, recipe_id=99, title="Other")
-        response = self.client.delete(reverse("favourite-delete", args=[99]))
+        response = self.client.delete(reverse("cookbook-delete", args=[99]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(SavedRecipe.objects.filter(pk=other_saved.pk).exists())
 
     def test_delete_nonexistent_recipe_returns_404(self):
-        response = self.client.delete(reverse("favourite-delete", args=[99999]))
+        response = self.client.delete(reverse("cookbook-delete", args=[99999]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
