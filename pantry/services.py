@@ -115,7 +115,7 @@ def find_recipes_by_ingredients(
             "includeIngredients": ",".join(ingredient_names),
             "fillIngredients": True,
             "number": number,
-            "ranking": 1,       # Spoonacular option to maximise used ingredients
+            "ranking": 2,       # Spoonacular option to minimise missing ingredients
             "apiKey": api_key,
             **_build_diet_params(diets),
         }
@@ -124,7 +124,7 @@ def find_recipes_by_ingredients(
         params = {
             "ingredients": ",".join(ingredient_names),
             "number": number,
-            "ranking": 1,       # Spoonacular option to maximise used ingredients
+            "ranking": 2,       # Spoonacular option to minimise missing ingredients
             "ignorePantry": True,
             "apiKey": api_key,
         }
