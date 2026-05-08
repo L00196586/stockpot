@@ -161,8 +161,8 @@ class RecipeDetailPageView(TemplateView):
 
 class FavouriteListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/favourites/ — List the authenticated user's saved recipes.
-    POST /api/favourites/ — Save a recipe to favourites.
+    GET  /api/cookbook/ — List the authenticated user's cookbook.
+    POST /api/cookbook/ — Save a recipe to user's cookbook.
     """
     serializer_class = SavedRecipeSerializer
     permission_classes = [IsAuthenticated]
@@ -173,8 +173,8 @@ class FavouriteListCreateView(generics.ListCreateAPIView):
 
 class FavouriteDeleteView(generics.DestroyAPIView):
     """
-    DELETE /api/favourites/<recipe_id>/
-    Remove a recipe from favourites by Spoonacular recipe ID.
+    DELETE /api/cookbook/<recipe_id>/
+    Remove a recipe from user's cookbook by Spoonacular recipe ID.
     """
     permission_classes = [IsAuthenticated]
 
@@ -187,7 +187,7 @@ class FavouriteDeleteView(generics.DestroyAPIView):
 
 class FavouritesPageView(TemplateView):
     """
-    GET /favourites/
-    Favourites HTML page.
+    GET /cookbook/
+    Cookbook HTML page.
     """
     template_name = "pantry/favourites.html"

@@ -14,5 +14,5 @@ urlpatterns = [
     path("pantry/", PantryPageView.as_view(), name="pantry-page"),
     path("recipes/", RecipeSuggestionsPageView.as_view(), name="recipes-page"),
     path("recipes/<int:recipe_id>/", RecipeDetailPageView.as_view(), name="recipe-detail-page"),
-    path("favourites/", FavouritesPageView.as_view(), name="favourites-page"),
+    path("cookbook/", FavouritesPageView.as_view(), name="favourites-page"),
 ]
