@@ -519,15 +519,45 @@ class PantryPageViewTest(TestCase):
         self.assertIn("unit_choices", response.context)
         self.assertTrue(len(response.context["unit_choices"]) > 0)
 
-    def test_find_recipes_button_links_to_recipes_page_with_autoload(self):
+    def test_find_recipes_opens_ingredient_modal(self):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
-        self.assertContains(response, '/recipes/?autoload=1')
+        self.assertContains(response, 'id="btn-open-ingredient-modal"')
 
     def test_find_recipes_button_is_rendered(self):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertContains(response, 'Find Recipes')
+
+    def test_ingredient_modal_is_present(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="ingredientModal"')
+
+    def test_ingredient_modal_has_search_filter(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="ingredient-filter"')
+
+    def test_ingredient_modal_has_select_all_button(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="btn-select-all"')
+
+    def test_ingredient_modal_has_checklist_container(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="ingredient-checklist"')
+
+    def test_ingredient_modal_has_selection_count(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="selection-count"')
+
+    def test_ingredient_modal_has_submit_button(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertContains(response, 'id="btn-find-recipes-submit"')
 
 
 class RecipeDetailViewTest(APITestCase):
