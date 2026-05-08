@@ -127,6 +127,17 @@ class StockItemListCreateViewTest(APITestCase):
 
     # Create
 
+    def test_list_response_includes_created_at_as_utc_iso_string(self):
+        StockItem.objects.create(user=self.user, ingredient=self.flour, quantity=500)
+        response = self.client.get(self.url)
+        item = response.data["results"][0]
+        self.assertIn("created_at", item)
+        created_at = item["created_at"]
+        self.assertIsNotNone(created_at)
+        # Must be a string whose first 10 characters form a valid YYYY-MM-DD date.
+        date_part = str(created_at)[:10]
+        datetime.date.fromisoformat(date_part)
+
     def test_create_stock_item_returns_201(self):
         response = self.client.post(
             self.url,
