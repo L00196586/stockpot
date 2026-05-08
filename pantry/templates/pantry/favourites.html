@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Favourites – StockPot{% endblock %}
+{% block title %}My Cookbook – StockPot{% endblock %}
 
 {% block content %}
 <div class="container py-4">
 
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold mb-0">My Favourites</h4>
+    <h4 class="fw-bold mb-0">My Cookbook</h4>
   </div>
 
   <div id="alert-area"></div>
@@ -108,7 +108,7 @@
       const data = await resp.json();
       document.getElementById('loading').classList.add('d-none');
       if (!resp.ok) {
-        showAlert(data.detail || 'Could not load favourites.');
+        showAlert(data.detail || 'Could not load your Cookbook.');
         return;
       }
       renderFavourites(data.results ?? data);

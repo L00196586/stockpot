@@ -24,7 +24,7 @@
 
     <div class="d-flex align-items-center gap-3 mb-4">
       <a href="/recipes/" class="btn btn-outline-secondary btn-sm">&larr; Back to Recipes</a>
-      <button id="fav-btn" class="btn btn-sm btn-outline-warning">&#9825; Save to Favourites</button>
+      <button id="fav-btn" class="btn btn-sm btn-outline-warning">&#9825; Save to my Cookbook</button>
     </div>
 
     <div class="row g-4">
@@ -86,10 +86,10 @@
   function setFavouriteBtn(isSaved) {
     const btn = document.getElementById('fav-btn');
     if (isSaved) {
-      btn.textContent = '\u2665 Saved to Favourites';
+      btn.textContent = '\u2665 Saved to your Cookbook';
       btn.className = 'btn btn-sm btn-warning';
     } else {
-      btn.textContent = '\u2661 Save to Favourites';
+      btn.textContent = '\u2661 Save to your Cookbook';
       btn.className = 'btn btn-sm btn-outline-warning';
     }
   }

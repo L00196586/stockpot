@@ -55,7 +55,7 @@ class SavedRecipeSerializer(serializers.ModelSerializer):
     def validate_recipe_id(self, value):
         request = self.context.get("request")
         if SavedRecipe.objects.filter(user=request.user, recipe_id=value).exists():
-            raise serializers.ValidationError("This recipe is already in your favourites.")
+            raise serializers.ValidationError("This recipe is already in your cookbook.")
         return value
 
     def create(self, validated_data):
