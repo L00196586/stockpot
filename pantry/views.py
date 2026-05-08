@@ -66,7 +66,7 @@ class PantryPageView(TemplateView):
     GET /pantry/
     My Pantry dashboard HTML page.
     """
-    template_name = "pantry/stock.html"
+    template_name = "pantry/pantry.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
