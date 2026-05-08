@@ -483,6 +483,24 @@ class RecipeSuggestionsPageViewTest(TestCase):
         self.assertGreater(len(response.context["dietary_choices"]), 0)
 
 
+class RootRedirectTest(TestCase):
+
+    def test_root_url_redirects_to_pantry(self):
+        response = self.client.get('/')
+        self.assertRedirects(response, '/pantry/', status_code=301)
+
+    def test_root_url_redirect_is_permanent(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 301)
+
+    def test_root_url_redirect_is_followed_to_pantry_page(self):
+        user = User.objects.create_user(username="redirect_user", password="pass")
+        self.client.force_login(user)
+        response = self.client.get('/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'pantry/pantry.html')
+
+
 class PantryPageViewTest(TestCase):
 
     def setUp(self):
