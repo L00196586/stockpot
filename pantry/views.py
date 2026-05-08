@@ -64,7 +64,7 @@ class StockItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 class PantryPageView(TemplateView):
     """
     GET /pantry/
-    My Stock dashboard HTML page.
+    My Pantry dashboard HTML page.
     """
     template_name = "pantry/stock.html"
 
