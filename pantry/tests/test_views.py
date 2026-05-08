@@ -594,7 +594,7 @@ class RecipeDetailPageViewTest(TestCase):
         self.assertEqual(response.context["recipe_id"], self.recipe_id)
 
 
-class FavouriteListCreateViewTest(APITestCase):
+class CookbookListCreateViewTest(APITestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
@@ -618,7 +618,7 @@ class FavouriteListCreateViewTest(APITestCase):
 
     # Listing
 
-    def test_list_returns_only_logged_users_favourites(self):
+    def test_list_returns_only_logged_users_cookbook(self):
         SavedRecipe.objects.create(user=self.user, recipe_id=1, title="A")
         SavedRecipe.objects.create(user=self.other_user, recipe_id=2, title="B")
         response = self.client.get(self.url)
@@ -627,7 +627,7 @@ class FavouriteListCreateViewTest(APITestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["recipe_id"], 1)
 
-    def test_list_returns_empty_for_user_with_no_favourites(self):
+    def test_list_returns_empty_for_user_with_no_saved_recipes_on_cookbook(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data.get("results", response.data)
@@ -667,7 +667,7 @@ class FavouriteListCreateViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
 
-class FavouriteDeleteViewTest(APITestCase):
+class CookbookDeleteViewTest(APITestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
@@ -680,12 +680,12 @@ class FavouriteDeleteViewTest(APITestCase):
         self.client.force_authenticate(user=None)
         self.assertEqual(self.client.delete(self.url).status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_delete_removes_favourite_and_returns_204(self):
+    def test_delete_removes_saved_recipe_and_returns_204(self):
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(SavedRecipe.objects.filter(user=self.user, recipe_id=42).exists())
 
-    def test_delete_other_users_favourite_returns_404(self):
+    def test_delete_other_users_saved_recipe_returns_404(self):
         other_saved = SavedRecipe.objects.create(user=self.other_user, recipe_id=99, title="Other")
         response = self.client.delete(reverse("favourite-delete", args=[99]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -696,13 +696,13 @@ class FavouriteDeleteViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class FavouritesPageViewTest(TestCase):
+class CookbookPageViewTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="chef", password="pass")
-        self.url = reverse("favourites-page")
+        self.url = reverse("cookbook-page")
 
-    def test_renders_favourites_template(self):
+    def test_renders_cookbook_template(self):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
