@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
+
 from users.views import LoginPageView, ProfilePageView, RegisterPageView
 from pantry.views import CookbookPageView, PantryPageView, RecipeDetailPageView, RecipeSuggestionsPageView
 
@@ -15,4 +17,5 @@ urlpatterns = [
     path("recipes/", RecipeSuggestionsPageView.as_view(), name="recipes-page"),
     path("recipes/<int:recipe_id>/", RecipeDetailPageView.as_view(), name="recipe-detail-page"),
     path("cookbook/", CookbookPageView.as_view(), name="cookbook-page"),
+    path('', RedirectView.as_view(pattern_name='pantry-page')),
 ]
