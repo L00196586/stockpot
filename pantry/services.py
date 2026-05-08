@@ -72,10 +72,44 @@ def _search_cache_key(ingredient_names: list[str], diets: list[str] | None) -> s
     return f"recipe_search:{hex_digest}"
 
 
+def _recalculate_used_missed(results: list[dict], full_pantry_names: list[str] | None) -> list[dict]:
+    """
+    When only a subset of pantry ingredients is sent to Spoonacular, the API
+    will classify pantry items that weren't included in the query as "missed"
+    This function corrects the used/missed count by checking
+    each recipe's missed_ingredients against the user's full pantry.
+
+    If `full_pantry_names` is None (meaning the full pantry was already sent to
+    Spoonacular), the results are returned unchanged.
+    """
+    if not full_pantry_names:
+        return results
+
+    full_set = {name.lower() for name in full_pantry_names}
+    adjusted = []
+    for recipe in results:
+        used = list(recipe["used_ingredients"])
+        missed = []
+        for name in recipe["missed_ingredients"]:
+            if name.lower() in full_set:
+                used.append(name)
+            else:
+                missed.append(name)
+        adjusted.append({
+            **recipe,
+            "used_ingredients": used,
+            "missed_ingredients": missed,
+            "used_count": len(used),
+            "missed_count": len(missed),
+        })
+    return adjusted
+
+
 def find_recipes_by_ingredients(
     ingredient_names: list[str],
     number: int = 12,
     diets: list[str] | None = None,
+    full_pantry_names: list[str] | None = None,
 ) -> list[dict]:
     """
     Request to Spoonacular API for recipes suggested by the provided ingredient names and optional dietary filters.
@@ -85,10 +119,14 @@ def find_recipes_by_ingredients(
     `fillIngredients=true` so the same used/missed ingredient counts are returned.
 
     Args:
-        ingredient_names  - List of ingredient name strings from the user's pantry.
+        ingredient_names  - List of selected ingredient names from the user's pantry.
         number            - Maximum number of recipes to return (defaults to 12).
         diets             - Optional list of UserProfile dietary preference keys
                             (e.g. ["vegan", "gluten_free"]).
+        full_pantry_names - When `ingredient_names` is a subset of the user's
+                            pantry, pass the full list here so that used/missed
+                            counts are recalculated against the complete inventory
+                            rather than only the selected ingredients.
 
     Returns a list of recipe dicts, each containing:
             id, title, image, used_count, missed_count,
@@ -105,7 +143,7 @@ def find_recipes_by_ingredients(
     cache_key = _search_cache_key(ingredient_names, diets)
     cached = cache.get(cache_key)
     if cached is not None:
-        return cached
+        return _recalculate_used_missed(cached, full_pantry_names)
 
     use_complex_search = bool(diets)
 
@@ -165,7 +203,7 @@ def find_recipes_by_ingredients(
     # Store result on cache for the defined time on SEARCH_CACHE_TTL
     cache.set(cache_key, results, timeout=settings.SEARCH_CACHE_TTL)
 
-    return results
+    return _recalculate_used_missed(results, full_pantry_names)
 
 
 def get_recipe_details(recipe_id: int) -> dict:
