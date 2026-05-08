@@ -483,6 +483,24 @@ class RecipeSuggestionsPageViewTest(TestCase):
         self.assertGreater(len(response.context["dietary_choices"]), 0)
 
 
+class RootRedirectTest(TestCase):
+
+    def test_root_url_redirects_to_pantry(self):
+        response = self.client.get('/')
+        self.assertRedirects(response, '/pantry/', status_code=301)
+
+    def test_root_url_redirect_is_permanent(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 301)
+
+    def test_root_url_redirect_is_followed_to_pantry_page(self):
+        user = User.objects.create_user(username="redirect_user", password="pass")
+        self.client.force_login(user)
+        response = self.client.get('/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'pantry/pantry.html')
+
+
 class PantryPageViewTest(TestCase):
 
     def setUp(self):
@@ -493,7 +511,7 @@ class PantryPageViewTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "pantry/stock.html")
+        self.assertTemplateUsed(response, "pantry/pantry.html")
 
     def test_context_includes_unit_choices(self):
         self.client.force_login(self.user)
@@ -594,13 +612,13 @@ class RecipeDetailPageViewTest(TestCase):
         self.assertEqual(response.context["recipe_id"], self.recipe_id)
 
 
-class FavouriteListCreateViewTest(APITestCase):
+class CookbookListCreateViewTest(APITestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
         self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
         self.client.force_authenticate(user=self.user)
-        self.url = reverse("favourite-list-create")
+        self.url = reverse("cookbook-list-create")
         self.valid_payload = {"recipe_id": 42, "title": "Pancakes", "image": "https://example.com/img.jpg"}
 
     # Authentication
@@ -618,7 +636,7 @@ class FavouriteListCreateViewTest(APITestCase):
 
     # Listing
 
-    def test_list_returns_only_logged_users_favourites(self):
+    def test_list_returns_only_logged_users_cookbook(self):
         SavedRecipe.objects.create(user=self.user, recipe_id=1, title="A")
         SavedRecipe.objects.create(user=self.other_user, recipe_id=2, title="B")
         response = self.client.get(self.url)
@@ -627,7 +645,7 @@ class FavouriteListCreateViewTest(APITestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["recipe_id"], 1)
 
-    def test_list_returns_empty_for_user_with_no_favourites(self):
+    def test_list_returns_empty_for_user_with_no_saved_recipes_on_cookbook(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data.get("results", response.data)
@@ -667,43 +685,43 @@ class FavouriteListCreateViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
 
-class FavouriteDeleteViewTest(APITestCase):
+class CookbookDeleteViewTest(APITestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="test@email.com", password="SecurePass123!")
         self.other_user = User.objects.create_user(username="othertest@email.com", password="SecurePass234!")
         self.client.force_authenticate(user=self.user)
         self.saved = SavedRecipe.objects.create(user=self.user, recipe_id=42, title="Pancakes")
-        self.url = reverse("favourite-delete", args=[42])
+        self.url = reverse("cookbook-delete", args=[42])
 
     def test_delete_requires_authentication(self):
         self.client.force_authenticate(user=None)
         self.assertEqual(self.client.delete(self.url).status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_delete_removes_favourite_and_returns_204(self):
+    def test_delete_removes_saved_recipe_and_returns_204(self):
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(SavedRecipe.objects.filter(user=self.user, recipe_id=42).exists())
 
-    def test_delete_other_users_favourite_returns_404(self):
+    def test_delete_other_users_saved_recipe_returns_404(self):
         other_saved = SavedRecipe.objects.create(user=self.other_user, recipe_id=99, title="Other")
-        response = self.client.delete(reverse("favourite-delete", args=[99]))
+        response = self.client.delete(reverse("cookbook-delete", args=[99]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(SavedRecipe.objects.filter(pk=other_saved.pk).exists())
 
     def test_delete_nonexistent_recipe_returns_404(self):
-        response = self.client.delete(reverse("favourite-delete", args=[99999]))
+        response = self.client.delete(reverse("cookbook-delete", args=[99999]))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class FavouritesPageViewTest(TestCase):
+class CookbookPageViewTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username="chef", password="pass")
-        self.url = reverse("favourites-page")
+        self.url = reverse("cookbook-page")
 
-    def test_renders_favourites_template(self):
+    def test_renders_cookbook_template(self):
         self.client.force_login(self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "pantry/favourites.html")
+        self.assertTemplateUsed(response, "pantry/cookbook.html")

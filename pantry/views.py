@@ -64,9 +64,9 @@ class StockItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 class PantryPageView(TemplateView):
     """
     GET /pantry/
-    My Stock dashboard HTML page.
+    My Pantry dashboard HTML page.
     """
-    template_name = "pantry/stock.html"
+    template_name = "pantry/pantry.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -159,10 +159,10 @@ class RecipeDetailPageView(TemplateView):
         return context
 
 
-class FavouriteListCreateView(generics.ListCreateAPIView):
+class CookbookListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/favourites/ — List the authenticated user's saved recipes.
-    POST /api/favourites/ — Save a recipe to favourites.
+    GET  /api/cookbook/ — List the authenticated user's cookbook.
+    POST /api/cookbook/ — Save a recipe to user's cookbook.
     """
     serializer_class = SavedRecipeSerializer
     permission_classes = [IsAuthenticated]
@@ -171,10 +171,10 @@ class FavouriteListCreateView(generics.ListCreateAPIView):
         return SavedRecipe.objects.filter(user=self.request.user)
 
 
-class FavouriteDeleteView(generics.DestroyAPIView):
+class CookbookDeleteView(generics.DestroyAPIView):
     """
-    DELETE /api/favourites/<recipe_id>/
-    Remove a recipe from favourites by Spoonacular recipe ID.
+    DELETE /api/cookbook/<recipe_id>/
+    Remove a recipe from user's cookbook by Spoonacular recipe ID.
     """
     permission_classes = [IsAuthenticated]
 
@@ -185,9 +185,9 @@ class FavouriteDeleteView(generics.DestroyAPIView):
         )
 
 
-class FavouritesPageView(TemplateView):
+class CookbookPageView(TemplateView):
     """
-    GET /favourites/
-    Favourites HTML page.
+    GET /cookbook/
+    Cookbook HTML page.
     """
-    template_name = "pantry/favourites.html"
+    template_name = "pantry/cookbook.html"

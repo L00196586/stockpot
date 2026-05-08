@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Favourites – StockPot{% endblock %}
+{% block title %}My Cookbook – StockPot{% endblock %}
 
 {% block content %}
 <div class="container py-4">
 
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold mb-0">My Favourites</h4>
+    <h4 class="fw-bold mb-0">My Cookbook</h4>
   </div>
 
   <div id="alert-area"></div>
@@ -19,7 +19,7 @@
   </div>
 
   <!-- Recipe cards -->
-  <div class="row g-4" id="favourites-grid"></div>
+  <div class="row g-4" id="cookbook-grid"></div>
 
   <!-- Empty state -->
   <div id="empty-state" class="text-center text-muted py-5 d-none">
@@ -32,7 +32,7 @@
 
 {% block extra_js %}
 <script>
-  const FAVOURITES_URL = '/api/favourites/';
+  const COOKBOOK_URL = '/api/cookbook/';
 
   function showAlert(msg, type = 'danger') {
     document.getElementById('alert-area').innerHTML =
@@ -42,15 +42,15 @@
        </div>`;
   }
 
-  async function removeFavourite(recipeId, cardEl) {
-    const resp = await fetch(`${FAVOURITES_URL}${recipeId}/`, {
+  async function removeSavedRecipe(recipeId, cardEl) {
+    const resp = await fetch(`${COOKBOOK_URL}${recipeId}/`, {
       method: 'DELETE',
       credentials: 'same-origin',
       headers: { 'X-CSRFToken': getCsrf() },
     });
     if (resp.ok || resp.status === 204) {
       cardEl.remove();
-      if (!document.getElementById('favourites-grid').children.length) {
+      if (!document.getElementById('cookbook-grid').children.length) {
         document.getElementById('empty-state').classList.remove('d-none');
       }
     } else {
@@ -58,8 +58,8 @@
     }
   }
 
-  function renderFavourites(recipes) {
-    const grid = document.getElementById('favourites-grid');
+  function renderCookbook(recipes) {
+    const grid = document.getElementById('cookbook-grid');
     const empty = document.getElementById('empty-state');
     grid.innerHTML = '';
 
@@ -88,7 +88,7 @@
             </h6>
             <div class="mt-auto d-flex gap-2">
               <a href="${detailUrl}" class="btn btn-sm btn-outline-primary flex-grow-1">View Recipe</a>
-              <button class="btn btn-sm btn-outline-danger" onclick="removeFavourite(${r.recipe_id}, this.closest('.col-sm-6'))">
+              <button class="btn btn-sm btn-outline-danger" onclick="removeSavedRecipe(${r.recipe_id}, this.closest('.col-sm-6'))">
                 &#9825; Remove
               </button>
             </div>
@@ -98,9 +98,9 @@
     });
   }
 
-  async function loadFavourites() {
+  async function loadCookbook() {
     try {
-      const resp = await fetch(FAVOURITES_URL, { credentials: 'same-origin' });
+      const resp = await fetch(COOKBOOK_URL, { credentials: 'same-origin' });
       if (resp.status === 401 || resp.status === 403) {
         window.location.href = '/login/';
         return;
@@ -108,17 +108,17 @@
       const data = await resp.json();
       document.getElementById('loading').classList.add('d-none');
       if (!resp.ok) {
-        showAlert(data.detail || 'Could not load favourites.');
+        showAlert(data.detail || 'Could not load your cookbook.');
         return;
       }
-      renderFavourites(data.results ?? data);
+      renderCookbook(data.results ?? data);
     } catch {
       document.getElementById('loading').classList.add('d-none');
       showAlert('Could not reach the server. Please check your connection.');
     }
   }
 
-  loadFavourites();
+  loadCookbook();
 
   document.getElementById('logout-link').addEventListener('click', e => {
     e.preventDefault();

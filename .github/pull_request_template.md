@@ -27,7 +27,7 @@
 ## Testing
 
 - [ ] I have added or updated tests to cover my changes
-- [ ] All new and existing tests pass locally (`python manage.py test pantry`)
+- [ ] All new and existing tests pass locally (`python manage.py test`)
 - [ ] Test coverage has not dropped below 80 %
 
 ## Notes for reviewers
