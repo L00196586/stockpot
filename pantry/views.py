@@ -86,20 +86,44 @@ class RecipeMatchView(APIView):
         diets_param = request.query_params.get("diets", "").strip()
         diets = [d.strip() for d in diets_param.split(",") if d.strip()] or None
 
-        ingredient_names = list(
+        all_stock = (
             StockItem.objects.filter(user=request.user)
             .select_related("ingredient")
             .values_list("ingredient__name", flat=True)
         )
+        all_names = list(all_stock)
 
-        if not ingredient_names:
+        if not all_names:
             return Response(
                 {"detail": "Your pantry is empty. Add some ingredients to get recipe suggestions."},
                 status=status.HTTP_200_OK,
             )
 
+        # Optional partial selection: ?ingredients=Flour,Milk
+        selected_param = request.query_params.get("ingredients", "").strip()
+        if selected_param:
+            selected = [s.strip() for s in selected_param.split(",") if s.strip()]
+            pantry_lower = {n.lower() for n in all_names}
+            ingredient_names = [n for n in selected if n.lower() in pantry_lower]
+            # Only pass full_pantry_names when the selection is a subset,
+            # so the service can recalculate used/missed against the real pantry.
+            full_pantry_names = all_names if len(ingredient_names) < len(all_names) else None
+        else:
+            ingredient_names = all_names
+            full_pantry_names = None
+
+        if not ingredient_names:
+            return Response(
+                {"detail": "None of the selected ingredients are in your pantry."},
+                status=status.HTTP_200_OK,
+            )
+
         try:
-            recipes = find_recipes_by_ingredients(ingredient_names, diets=diets)
+            recipes = find_recipes_by_ingredients(
+                ingredient_names,
+                diets=diets,
+                full_pantry_names=full_pantry_names,
+            )
         except SpoonacularError as e:
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE
             if e.status_code == 402:
