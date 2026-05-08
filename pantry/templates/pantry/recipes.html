@@ -190,9 +190,9 @@
     document.getElementById('empty-state').classList.add('d-none');
 
     const selectedDiets = getSelectedDiets();
-    const url = selectedDiets.length
-      ? `${MATCH_URL}?diets=${encodeURIComponent(selectedDiets.join(','))}`
-      : MATCH_URL;
+    const params = new URLSearchParams();
+    if (selectedDiets.length) params.set('diets', selectedDiets.join(','));
+    const url = `${MATCH_URL}${params.toString() ? '?' + params.toString() : ''}`;
 
     try {
       const resp = await fetch(url, { credentials: 'same-origin' });
@@ -226,8 +226,39 @@
   async function init() {
     await loadProfileFilters();
     loadCookbookIds();
-    if (new URLSearchParams(window.location.search).get('autoload') === '1') {
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('autoload') !== '1') return;
+
+    const ingParam = urlParams.get('ingredients');
+    if (!ingParam) {
       document.getElementById('btn-find-recipes').click();
+      return;
+    }
+
+    // Partial-ingredient autoload: build API call with ?ingredients=
+    clearAlert();
+    setLoading(true);
+    document.getElementById('recipe-grid').innerHTML = '';
+    document.getElementById('empty-state').classList.add('d-none');
+
+    const params = new URLSearchParams({ ingredients: ingParam });
+    const selectedDiets = getSelectedDiets();
+    if (selectedDiets.length) params.set('diets', selectedDiets.join(','));
+
+    try {
+      const resp = await fetch(`${MATCH_URL}?${params.toString()}`, { credentials: 'same-origin' });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showAlert(data.detail || 'An error occurred while fetching recipes.', resp.status === 429 ? 'warning' : 'danger');
+        return;
+      }
+      if (data.detail) { showAlert(data.detail, 'info'); return; }
+      renderRecipes(data);
+    } catch {
+      showAlert('Could not reach the recipe service. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
     }
   }
   init();
