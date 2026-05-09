@@ -17,5 +17,6 @@ urlpatterns = [
     path("recipes/", RecipeSuggestionsPageView.as_view(), name="recipes-page"),
     path("recipes/<int:recipe_id>/", RecipeDetailPageView.as_view(), name="recipe-detail-page"),
     path("cookbook/", CookbookPageView.as_view(), name="cookbook-page"),
+    path('', include('django_prometheus.urls')),
     path('', RedirectView.as_view(pattern_name='pantry-page', permanent=True)),
 ]
