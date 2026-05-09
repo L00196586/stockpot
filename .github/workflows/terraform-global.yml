@@ -1,0 +1,37 @@
+name: Global Infrastructure
+
+# Infrastructure shouldn't deploy on each push to main so we keep it as a manual trigger in the GitHub Actions tab
+on:
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: Terraform Apply (Global)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./terraform/environments/global
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        run: terraform init
+
+      # Set for reading the logs
+      - name: Terraform Plan
+        run: terraform plan
+
+      # Execute the changes and build the infrastructure
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
