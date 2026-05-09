@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build-and-push:
-    name: Docker Build adn Push
+    name: Docker Build and Push
     runs-on: ubuntu-latest
     permissions:
       contents: read
