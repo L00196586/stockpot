@@ -41,3 +41,6 @@ media/
 
 # Ignore GCP Service Account Keys
 *.json
+
+# Terraform local files
+*.terraform*
