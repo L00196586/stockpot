@@ -1,4 +1,4 @@
-name: Staging Infrastructure
+name: Production Infrastructure
 
 # Infrastructure shouldn't deploy on each push to main so we keep it as a manual trigger in the GitHub Actions tab
 on:
@@ -6,14 +6,14 @@ on:
 
 jobs:
   terraform:
-    name: Terraform Apply (Staging)
+    name: Terraform Apply (Production)
     runs-on: ubuntu-latest
 
-    environment: Staging
+    environment: Production
 
     defaults:
       run:
-        working-directory: ./terraform/environments/staging
+        working-directory: ./terraform/environments/production
 
     steps:
       - name: Checkout Repository

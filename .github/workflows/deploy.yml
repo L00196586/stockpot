@@ -1,0 +1,85 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    # Only deploy if changes are made to the app code or Dockerfile
+    paths-ignore:
+      - 'terraform/**'
+      - '**.md'
+
+env:
+  PROJECT_ID: stockpot-infrastructure
+  REGION: us-central1
+  REPOSITORY: stockpot-repo
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: Staging
+    env:
+      SERVICE: stockpot-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build and Push Container
+        run: |-
+              docker build -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stockpot-app:${{ github.sha }} .
+              docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stockpot-app:${{ github.sha }}
+
+      - name: Deploy to Cloud Run (Staging)
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}
+          env_vars: |
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
+            CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS }}
+            DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            SPOONACULAR_API_KEY=${{ secrets.SPOONACULAR_API_KEY }}
+
+
+  deploy-production:
+    name: Deploy to Production
+    # Wait for Staging deployment to complete and be approved before deploying to production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      SERVICE: stockpot-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Deploy to Cloud Run (Production)
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          # Uses the same image built in the staging job
+          image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stockpot-app:${{ github.sha }}
+          env_vars: |
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
+            CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS }}
+            DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            SPOONACULAR_API_KEY=${{ secrets.SPOONACULAR_API_KEY }}
