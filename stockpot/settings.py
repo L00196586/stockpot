@@ -1,7 +1,7 @@
 import dj_database_url
 from decouple import config, Csv
 from pathlib import Path
-# Testing deploy
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("DJANGO_SECRET_KEY")
@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "django_prometheus",
     "pantry",
     "users",
 ]
