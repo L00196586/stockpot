@@ -13,6 +13,7 @@ resource "google_sql_database_instance" "db_instance" {
   region           = "us-central1"
   settings {
     tier = var.db_tier
+    edition = "ENTERPRISE"
 
     ip_configuration {
       ipv4_enabled = true
