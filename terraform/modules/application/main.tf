@@ -41,8 +41,9 @@ resource "google_cloud_run_v2_service" "app" {
   name     = "stockpot-${var.env}"
   location = "us-central1"
   template {
+    # Django app
     containers {
-        # GitHub Actions will overwrite this dummy image with the real app
+      # GitHub Actions will overwrite this dummy image with the real app
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
       # Connection string for dj-database-url
@@ -50,6 +51,19 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "DATABASE_URL"
         value = "postgres://${google_sql_user.user.name}:${google_sql_user.user.password}@/${google_sql_database.db.name}?host=/cloudsql/${google_sql_database_instance.db_instance.connection_name}"
       }
+    }
+
+    # Prometheus sidecar for monitoring
+    containers {
+      # GitHub Actions will overwrite this dummy image with the real app
+      image = "us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-managed-prometheus-sidecar:latest"
+      name  = "collector"
+
+      args = [
+        "--stackdriver.project-id=${var.project_id}",
+        "--prometheus.target-url=http://localhost:8080/metrics",
+        "--prometheus.scrape-interval=60s"
+      ]
     }
 
     # Connects the app container to the database
