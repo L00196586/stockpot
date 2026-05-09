@@ -56,7 +56,7 @@ resource "google_cloud_run_v2_service" "app" {
     # Prometheus sidecar for monitoring
     containers {
       # GitHub Actions will overwrite this dummy image with the real app
-      image = "us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-managed-prometheus-sidecar:latest"
+      image = "us-docker.pkg.dev/cloud-ops-agents-artifacts/cloud-run-gmp-sidecar/cloud-run-gmp-sidecar:1.2.0"
       name  = "collector"
 
       args = [
