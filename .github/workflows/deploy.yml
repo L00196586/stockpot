@@ -76,7 +76,7 @@ jobs:
         with:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
-          # Uses the EXACT same image built in the staging job
+          # Uses the same image built in the staging job
           image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stockpot-app:${{ github.sha }}
           env_vars: |
             ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
