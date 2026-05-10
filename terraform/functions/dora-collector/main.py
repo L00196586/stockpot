@@ -61,7 +61,6 @@ def collect_dora(request):
         except ValueError:
             print("Invalid commit_time format received.")
 
-
     try:
         client.create_time_series(name=project_name, time_series=series_list)
         return "Metric recorded", 200
