@@ -9,6 +9,9 @@ jobs:
     name: Terraform Apply (Global)
     runs-on: ubuntu-latest
 
+    env:
+      TF_VAR_project_id: "stockpot-infrastructure"
+
     defaults:
       run:
         working-directory: ./terraform/environments/global
