@@ -1,7 +1,7 @@
 import dj_database_url
 from decouple import config, Csv
 from pathlib import Path
-# Trigger deploy
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("DJANGO_SECRET_KEY")
