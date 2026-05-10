@@ -86,6 +86,7 @@ jobs:
 
   # Keep this job at the end
   report-dora:
+    name: Report DORA Metrics
     needs: deploy-production
     runs-on: ubuntu-latest
     # Set to always() so it'll run on failed pipelines too
@@ -95,8 +96,8 @@ jobs:
         run: |
           curl -X POST https://dora-metric-collector-wqipaunhfq-uc.a.run.app \
           -H "Content-Type: application/json" \
-          -d '{
-            "env": "production",
-            "status": "${{ needs.deploy-cloudrun-production.result }}",
-            "commit": "${{ github.sha }}"
-          }'
+          -d "{
+            \"env\": \"production\",
+            \"status\": \"${{ needs.deploy-cloudrun-production.result }}\",
+            \"commit_time\": $COMMIT_TIME
+          }"
