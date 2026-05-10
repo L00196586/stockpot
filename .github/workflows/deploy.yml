@@ -99,5 +99,6 @@ jobs:
           -d "{
             \"env\": \"production\",
             \"status\": \"${{ needs.deploy-cloudrun-production.result }}\",
+            \"commit\": \"${{ github.sha }}\",
             \"commit_time\": $COMMIT_TIME
           }"
