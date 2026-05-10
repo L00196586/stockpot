@@ -100,6 +100,3 @@ jobs:
             "status": "${{ needs.deploy-cloudrun-production.result }}",
             "commit": "${{ github.sha }}"
           }'
-
-
-
