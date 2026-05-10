@@ -83,3 +83,20 @@ jobs:
             CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS }}
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
             SPOONACULAR_API_KEY=${{ secrets.SPOONACULAR_API_KEY }}
+
+  # Keep this job at the end
+  report-dora:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    # Set to always() so it'll run on failed pipelines too
+    if: always()
+    steps:
+      - name: Send DORA Webhook
+        run: |
+          curl -X POST https://dora-metric-collector-wqipaunhfq-uc.a.run.app \
+          -H "Content-Type: application/json" \
+          -d '{
+            "env": "production",
+            "status": "${{ needs.deploy-cloudrun-production.result }}",
+            "commit": "${{ github.sha }}"
+          }'
