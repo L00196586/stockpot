@@ -93,7 +93,7 @@ jobs:
     if: always()
     steps:
       - name: Checkout Code
-      - uses: actions/checkout@v6
+        uses: actions/checkout@v6
 
       - name: Send DORA Webhook
         run: |
