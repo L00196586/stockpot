@@ -94,11 +94,15 @@ jobs:
     steps:
       - name: Send DORA Webhook
         run: |
+          # Get the commit time. If git log fails, fallback to the current time (date +%s)
+          COMMIT_TIME=$(git log -1 --format=%ct || date +%s)
           curl -X POST https://dora-metric-collector-wqipaunhfq-uc.a.run.app \
           -H "Content-Type: application/json" \
-          -d "{
-            \"env\": \"production\",
-            \"status\": \"${{ needs.deploy-cloudrun-production.result }}\",
-            \"commit\": \"${{ github.sha }}\",
-            \"commit_time\": $COMMIT_TIME
-          }"
+          -d @- <<EOF
+          {
+            "env": "production",
+            "status": "${{ needs.deploy-cloudrun-production.result }}",
+            "commit": "${{ github.sha }}",
+            "commit_time": $COMMIT_TIME
+          }
+          EOF
