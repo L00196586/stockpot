@@ -92,6 +92,9 @@ jobs:
     # Set to always() so it'll run on failed pipelines too
     if: always()
     steps:
+      - name: Checkout Code
+      - uses: actions/checkout@v6
+
       - name: Send DORA Webhook
         run: |
           # Get the commit time. If git log fails, fallback to the current time (date +%s)
