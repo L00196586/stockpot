@@ -32,7 +32,6 @@ def collect_dora(request):
     status_series = monitoring_v3.TimeSeries()
     status_series.metric.type = "custom.googleapis.com/dora/deployment_status"
     status_series.metric.labels["environment"] = env
-    status_series.metric.labels["commit"] = commit_sha
     status_series.resource.type = "global"
 
     status_series.points = [monitoring_v3.Point({
