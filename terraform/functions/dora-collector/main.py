@@ -15,9 +15,12 @@ def collect_dora(request):
     if not data:
         return "No data provided", 400
 
+    print(f"Full Payload Received: {data}")
     env = data.get('env', 'production')
     # Status value => 1: Success. Status 0: Error
-    status_value = 1 if data.get('status') == 'success' else 0
+    status_str = str(data.get('status', '')).lower()
+    is_success = (status_str == 'success')
+
     commit_sha = data.get('commit', 'unknown')
     commit_time = data.get('commit_time')
 
@@ -37,15 +40,18 @@ def collect_dora(request):
 
     status_series.points = [monitoring_v3.Point({
         "interval": time_interval,
-        "value": {"int64_value": status_value}
+        "value": {"int64_value": 1 if is_success else 0}
     })]
     series_list.append(status_series)
 
-    # Calculate lead time if the deploy actually succeeded
-    if status_value == 1 and commit_time:
+    # Calculate lead time if the deploy succeeded
+    lead_time_result = "Not attempted"
+    if is_success and commit_time:
         try:
+            # Cleaning the input from whitespace and quotes
+            clean_time = str(commit_time).strip().replace('"', '')
             # Calculating lead time (current time - commit time)
-            lead_time_seconds = int(now - float(commit_time))
+            lead_time_seconds = int(now - float(clean_time))
 
             lead_series = monitoring_v3.TimeSeries()
             lead_series.metric.type = "custom.googleapis.com/dora/lead_time"
@@ -60,8 +66,8 @@ def collect_dora(request):
             })]
             series_list.append(lead_series)
             lead_time_result = f"Lead time calculated: {lead_time_seconds} seconds"
-        except ValueError:
-            lead_time_result = "Lead time ValueError: Invalid commit_time format"
+        except Exception as e:
+            lead_time_result = f"Lead time ValueError: {str(e)}"
             print("Invalid commit_time format received.")
     else:
         lead_time_result = "Lead time not calculated"
