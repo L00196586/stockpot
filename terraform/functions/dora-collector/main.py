@@ -9,7 +9,6 @@ project_id = os.environ.get('GCP_PROJECT', 'stockpot-infrastructure')
 project_name = f"projects/{project_id}"
 
 
-
 @functions_framework.http
 def collect_dora(request):
     data = request.get_json()
@@ -65,10 +64,10 @@ def collect_dora(request):
             series_list.append(lead_series)
             lead_time_result = f"Lead time calculated: {lead_time_seconds} seconds"
         except ValueError:
-            lead_time_result = f"Lead time ValueError: Invalid commit_time format"
+            lead_time_result = "Lead time ValueError: Invalid commit_time format"
             print("Invalid commit_time format received.")
     else:
-        lead_time_result = f"Lead time not calculated"
+        lead_time_result = "Lead time not calculated"
 
     try:
         client.create_time_series(name=project_name, time_series=series_list)
