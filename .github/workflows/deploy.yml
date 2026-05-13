@@ -106,7 +106,7 @@ jobs:
           -d @- <<EOF
           {
             "env": "production",
-            "status": "${{ needs.deploy-cloudrun-production.result }}",
+            "status": "${{ needs.deploy-production.result }}",
             "commit": "${{ github.sha }}",
             "commit_time": "$COMMIT_TIME"
           }
