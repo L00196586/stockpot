@@ -108,7 +108,7 @@ jobs:
           --health-retries 5
 
     env:
-      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DJANGO_SECRET_KEY: "testing-key-not-secret"
       DEBUG: "True"
       ALLOWED_HOSTS: "localhost"
       DB_NAME: stockpot_test
